@@ -9,3 +9,6 @@ class World():
 
     def next_step(self):
         self.t_elapsed += self.t_step
+
+    def set_t(self, t):
+        self.t_elapsed = t

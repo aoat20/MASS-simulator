@@ -8,9 +8,12 @@ from general import *
 class Plotter():
     def __init__(self,
                  vessels,
-                 xy_lims):
+                 xy_lims,
+                 control=True):
 
+        self.play = True
         self.playspeed = 10
+        self.t_n = 0
         self._change_waypoints = False
         self._waypoints_temp = {}
         self._send_waypoints = False
@@ -37,7 +40,8 @@ class Plotter():
                                        handler_registry="click_handler")
 
         self._add_vessels(vessels=vessels)
-        self._initialise_controls()
+        if control:
+            self._initialise_controls()
         self._initialise_variable_viewer(vessel_N)
 
         dpg.create_viewport(title="MASS Simulator",
@@ -73,6 +77,11 @@ class Plotter():
                 dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize,
                                     6,
                                     category=dpg.mvThemeCat_Plots)
+        with dpg.theme(tag=f'new_wp_theme_{n}'):
+            with dpg.theme_component(dpg.mvScatterSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Line,
+                                    col,
+                                    category=dpg.mvThemeCat_Plots)
         return col
 
     def _initialise_map(self,
@@ -98,7 +107,12 @@ class Plotter():
                                            "click_handler")
 
     def _initialise_controls(self):
-        with dpg.window(label='Controls'):
+        with dpg.window(label='Controls',
+                        tag="tag_control"):
+            dpg.add_checkbox(label="Play",
+                             callback=self._set_play,
+                             default_value=True,
+                             tag='tag_play')
             dpg.add_drag_float(label="Playspeed",
                                min_value=0.1,
                                max_value=100,
@@ -106,6 +120,45 @@ class Plotter():
                                callback=self.set_playspeed)
             dpg.add_checkbox(label="Change warpoints",
                              callback=self._change_waypoints_check_cb)
+            dpg.add_button(label="Clear waypoints",
+                           callback=self._clear_wps)
+
+    def add_time_scrubber(self, t_max):
+        with dpg.window(label='Time'):
+            dpg.add_slider_float(label="Time, min",
+                                 min_value=1,
+                                 max_value=t_max-1,
+                                 clamped=True,
+                                 callback=self._set_time,
+                                 tag="time_slider",
+                                 width=1000)
+
+    def _set_time(self, sender, app_data):
+        self.t_n = app_data
+
+    def get_time(self):
+        t_rnd = round(self.t_n)
+        return t_rnd
+
+    def set_time(self, t):
+        self.t_n = t
+        dpg.set_value("time_slider",
+                      t)
+
+    def _set_play(self, sender, app_data):
+        self.play = app_data
+
+    def set_play(self, play):
+        self.play = play
+        dpg.set_value('tag_play',
+                      play)
+
+    def _clear_wps(self, sender, app_data):
+        self._waypoints_temp = {}
+        for b in dpg.get_aliases():
+            if "waypoint_temp_" in b:
+                dpg.set_value(b,
+                              [[]])
 
     def _change_waypoints_check_cb(self, sender, app_data):
         self._change_waypoints = app_data
@@ -119,6 +172,7 @@ class Plotter():
         if self._send_waypoints and self._waypoints_temp != {}:
             wp_ret = self._waypoints_temp
             self._waypoints_temp = {}
+            self._clear_wps([], [])
             return wp_ret
         else:
             return []
@@ -216,30 +270,44 @@ class Plotter():
                                 f'line_theme_{n}')
             dpg.bind_item_theme(f"waypoint_line_{v_key}",
                                 f'line_theme_{n}')
+            dpg.bind_item_theme(f"waypoint_temp_{v_key}",
+                                f'new_wp_theme_{n}')
 
             n += 1
 
-    def _mouse_callback(self, sender, app_data):
-        mouse_pos = dpg.get_plot_mouse_pos()
+    def _select_boat(self,
+                     xy,
+                     vessel_id: str = ""):
+        if vessel_id:
+            self._vessel_id_foc = vessel_id
+            return
 
         # Check if it's near to a boat and switch to that boat if so
         for b in dpg.get_aliases():
             if "tag_hist_" in b:
                 x = dpg.get_value(b)[0][-1]
                 y = dpg.get_value(b)[1][-1]
-                d = compute_distance(mouse_pos, [x, y])
-                if d < 100:
+                d = compute_distance(xy, [x, y])
+                if d < 200:
                     self._vessel_id_foc = b.replace('tag_hist_', '')
-                    return
+                    return True
 
+    def _add_temporary_waypoints(self, xy):
         # otherwise, update the waypoints of the current focussed vessel
         if self._change_waypoints:
             if self._vessel_id_foc not in self._waypoints_temp:
                 self._waypoints_temp[self._vessel_id_foc] = []
-            else:
-                self._waypoints_temp[self._vessel_id_foc].append(mouse_pos)
-                dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
-                              list(zip(*self._waypoints_temp[self._vessel_id_foc])))
+            self._waypoints_temp[self._vessel_id_foc].append(xy)
+            dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
+                          list(zip(*self._waypoints_temp[self._vessel_id_foc])))
+
+    def _mouse_callback(self, sender, app_data):
+        mouse_pos = dpg.get_plot_mouse_pos()
+
+        if self._select_boat(mouse_pos):
+            return
+
+        self._add_temporary_waypoints(mouse_pos)
 
     def update_vessels(self,
                        vessels: dict):
@@ -297,7 +365,6 @@ class Plotter():
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         if dpg.get_value(f"waypoint_plot_{vessel_id}") != wps:
-            print('updating wps')
             dpg.set_value(f"waypoint_plot_{vessel_id}",
                           list(zip(*waypoints)))
 
@@ -331,3 +398,6 @@ class Plotter():
 
     def set_playspeed(self, sender, app_data):
         self.playspeed = app_data
+
+    def tidy_up(self):
+        dpg.destroy_context()

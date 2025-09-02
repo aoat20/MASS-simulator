@@ -29,6 +29,7 @@ class Agent():
         self.waypoints = waypoints
         self.waypoint_n = 1
         self.goal_waypoint = waypoints[-1]
+        self._final_waypoint_reached = False
 
         # compute course to first waypoint
         self.course_deg = compute_bearing(xy_init,
@@ -40,13 +41,19 @@ class Agent():
         self.xy = [self.xy[0]+self.xy_step[0]*t_step,
                    self.xy[1]+self.xy_step[1]*t_step]
         self.xy_hist.append(self.xy)
-        d = compute_perp_distance(self.xy,
-                                  self.xy_hist[-2],
-                                  self.waypoints[self.waypoint_n])
-        if d < 50:
-            self.waypoint_n += 1
-            self.update_course(compute_bearing(self.xy,
-                                               self.waypoints[self.waypoint_n]))
+        # While not past the final waypoint
+        if self.waypoint_n < len(self.waypoints):
+            # Get distance to current waypoint
+            d = compute_perp_distance(self.xy,
+                                      self.xy_hist[-2],
+                                      self.waypoints[self.waypoint_n])
+            if d < 50:
+                if self.waypoint_n < len(self.waypoints)-1:
+                    self.waypoint_n += 1
+                    self.update_course(compute_bearing(self.xy,
+                                                       self.waypoints[self.waypoint_n]))
+                else:
+                    self._final_waypoint_reached = True
 
     def _compute_xy_step(self):
         # Compute the step in x and y based on the course and speed
