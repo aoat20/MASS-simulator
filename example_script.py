@@ -1,11 +1,11 @@
 from mass_simulator import MASSsim
 
 # To run scenario 4 in manual mode
-mass_sim = MASSsim(scenario=2,
+mass_sim = MASSsim(scenario=4,
                    mode='manual')
 
 # To set up scenario 4 in test mode
-mass_sim = MASSsim(scenario=2,
+mass_sim = MASSsim(scenario=4,
                    mode='test',
                    plotter=True)
 
@@ -25,6 +25,6 @@ while mass_sim.is_episode_running():
 
 # Playback one of the log files
 MASSsim(mode='playback',
-        log_file='logs/log_1.json')
+        log_file='logs/log_0.json')
 MASSsim(mode='playback',
-        log_file=4)
+        log_file=0)

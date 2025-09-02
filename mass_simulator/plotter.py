@@ -118,7 +118,7 @@ class Plotter():
                                max_value=100,
                                default_value=self.playspeed,
                                callback=self.set_playspeed)
-            dpg.add_checkbox(label="Change warpoints",
+            dpg.add_checkbox(label="Change waypoints",
                              callback=self._change_waypoints_check_cb)
             dpg.add_button(label="Clear waypoints",
                            callback=self._clear_wps)
