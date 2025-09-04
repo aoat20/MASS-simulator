@@ -18,7 +18,6 @@ class MASSsim():
                  log_dir: str = "logs/",
                  log_file: int | str = ""):
 
-        self._episode_finished = False
         self.termination_reason = ""
 
         if mode == "manual":
@@ -49,7 +48,7 @@ class MASSsim():
         if plotter:
             self._plotter = Plotter(self._vessels,
                                     xy_lim,
-                                    control=True)
+                                    control=False)
 
     def _start_playback(self,
                         log_file):
@@ -66,10 +65,10 @@ class MASSsim():
 
     def _manual_plotter_loop(self):
         t_0 = time()
-        while self._plotter.is_plotter_running():
+        while self._is_plotter_running():
             play = self._plotter.play
             if play:
-                if self.is_episode_running():
+                if self._is_episode_running():
                     if time() - t_0 >= self._world.t_step/(self._plotter.playspeed):
                         self._manualtest_next_step()
                         t_0 = time()
@@ -77,12 +76,13 @@ class MASSsim():
                     self._plotter.set_play(False)
             self._update_plotter()
 
+        # When finished, save and tidy up
         if hasattr(self, "_logger"):
             self._logger.save_log_file()
 
     def _playback_plotter_loop(self):
         t_0 = time()
-        while self._plotter.is_plotter_running():
+        while self._is_plotter_running():
             # do stuff
             play = self._plotter.play
             t = self._plotter.get_time()
@@ -91,7 +91,7 @@ class MASSsim():
                 self._plotter.set_play(False)
 
             if play:
-                if self.is_episode_running():
+                if self._is_episode_running():
                     if time() - t_0 > self._world.t_step/(self._plotter.playspeed):
                         self._playback_next_step()
                         t_0 = time()
@@ -112,28 +112,38 @@ class MASSsim():
         for v in self._vessels.values():
             v.update_other_vessels(self._vessels)
 
-    def _episode_finish_check(self):
-        # Check if all vessels have reached their final waypoint
-        v: Agent
-        reached = []
-        for v in self._vessels.values():
-            reached.append(v._final_waypoint_reached)
-        if all(reached):
-            self._episode_finished = True
+    def _is_plotter_running(self):
+        if self._plotter.is_plotter_running():
+            return True
+        else:
+            self._plotter.tidy_up()
+            delattr(self, '_plotter')
+            return False
+
+    def _is_episode_running(self):
+        if not hasattr(self, '_playback'):
+            # Check if all vessels have reached their final waypoint
+            v: Agent
+            reached = []
+            for v in self._vessels.values():
+                reached.append(v._final_waypoint_reached)
+            if all(reached):
+                return False
+            else:
+                return True
 
         # If it's in playback mode, check if it's hit the final time step
-        if hasattr(self, '_playback'):
+        else:
             if self._playback.n == self._playback.N-1:
-                self._episode_finished = True
+                return False
             else:
-                self._episode_finished = False
+                return True
 
     def is_episode_running(self):
-        self._episode_finish_check()
-        if hasattr(self, "_plotter"):
-            if not self._plotter.is_plotter_running():
-                self._plotter.tidy_up()
-        return not self._episode_finished
+        # If the episode is finished, tidy up
+        if hasattr(self, '_plotter') and not self._is_episode_running():
+            self._plotter.tidy_up()
+        return self._is_episode_running()
 
     def _manualtest_next_step(self):
         self._world.next_step()
@@ -156,11 +166,11 @@ class MASSsim():
             v.update_other_vessels(self._vessels)
 
     def next_step(self):
-        self._episode_finish_check()
-        if not self._episode_finished:
+        if self.is_episode_running():
             self._manualtest_next_step()
         if hasattr(self, '_plotter'):
-            self._update_plotter()
+            if self._is_plotter_running():
+                self._update_plotter()
 
     def get_obs(self):
         obs_dict = {}

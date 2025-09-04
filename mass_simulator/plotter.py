@@ -40,9 +40,9 @@ class Plotter():
                                        handler_registry="click_handler")
 
         self._add_vessels(vessels=vessels)
+        self._initialise_variable_viewer(vessel_N)
         if control:
             self._initialise_controls()
-        self._initialise_variable_viewer(vessel_N)
 
         dpg.create_viewport(title="MASS Simulator",
                             width=600,
@@ -108,7 +108,9 @@ class Plotter():
 
     def _initialise_controls(self):
         with dpg.window(label='Controls',
-                        tag="tag_control"):
+                        tag="tag_control",
+                        min_size=[250, 140],
+                        max_size=[250, 140]):
             dpg.add_checkbox(label="Play",
                              callback=self._set_play,
                              default_value=True,
@@ -124,8 +126,10 @@ class Plotter():
                            callback=self._clear_wps)
 
     def add_time_scrubber(self, t_max):
-        with dpg.window(label='Time'):
-            dpg.add_slider_float(label="Time, min",
+        with dpg.window(label='Time',
+                        min_size=[1100, 70],
+                        max_size=[1100, 70]):
+            dpg.add_slider_float(label="Time, s",
                                  min_value=1,
                                  max_value=t_max-1,
                                  clamped=True,
@@ -180,7 +184,9 @@ class Plotter():
     def _initialise_variable_viewer(self,
                                     vessels_N):
         with dpg.window(label="AIS Data",
-                        no_close=True):
+                        no_close=True,
+                        min_size=[110+vessels_N*110, 168],
+                        max_size=[110+vessels_N*110, 168]):
             dpg.add_text(default_value=f"Time: -",
                          tag="time_tag")
             with dpg.table(tag='other_vessels_table',
@@ -215,13 +221,15 @@ class Plotter():
         v: Agent
         n = 0
         for v_key in vessels:
+            v = vessels[v_key]
+
             # Setup plot colours for the boat
             col = self._setup_plot_themes(n)
 
             # Set up line for history
             dpg.add_line_series(label=v_key,
-                                x=[],
-                                y=[],
+                                x=[v.xy[0]],
+                                y=[v.xy[1]],
                                 parent='map_y_axis',
                                 tag=f"tag_hist_{v_key}")
 
