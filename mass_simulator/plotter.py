@@ -236,9 +236,9 @@ class Plotter():
             # Set up triangle for vessel locations
             with dpg.draw_node(parent="map_plot_tag",
                                tag=f"tag_draw_{v_key}"):
-                dpg.draw_triangle(p1=[-50, -50],
-                                  p2=[0, 150],
-                                  p3=[50, -50],
+                dpg.draw_triangle(p1=[-100, -100],
+                                  p2=[0, 250],
+                                  p3=[100, -100],
                                   color=col,
                                   fill=col,
                                   thickness=0.1,
