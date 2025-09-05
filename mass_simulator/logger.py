@@ -20,6 +20,7 @@ class Logger():
 
     def _get_next_file_name(self,
                             save_dir):
+        save_dir = os.path.abspath(save_dir)
         # create the directory if it doesn't exist
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)

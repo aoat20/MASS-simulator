@@ -145,6 +145,9 @@ class MASSsim():
             self._plotter.tidy_up()
         return self._is_episode_running()
 
+    def save_episode(self):
+        self._logger.save_log_file()
+
     def _manualtest_next_step(self):
         self._world.next_step()
         if hasattr(self, '_logger'):

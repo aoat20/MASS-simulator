@@ -2,7 +2,8 @@ from mass_simulator import MASSsim
 
 # To run scenario 4 in manual mode
 mass_sim = MASSsim(scenario=4,
-                   mode='manual')
+                   mode='manual',
+                   log_dir='/home/user/test_folder')
 
 # To set up scenario 4 in test mode
 mass_sim = MASSsim(scenario=4,
@@ -21,6 +22,7 @@ while mass_sim.is_episode_running():
         mass_sim.set_waypoints('agent',
                                [[430_000,
                                  5_555_000]])
+mass_sim.save_episode()
 
 
 # Playback one of the log files
