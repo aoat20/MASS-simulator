@@ -29,7 +29,7 @@ while mass_sim.is_episode_running():
         mass_sim.set_waypoints('agent',
                                [[430_000,
                                  5_555_000]])
-
+mass_sim.save_episode()
 
 # Playback one of the log files
 MASSsim(mode='playback',
