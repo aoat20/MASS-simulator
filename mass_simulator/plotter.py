@@ -183,7 +183,7 @@ class Plotter():
 
     def _initialise_variable_viewer(self,
                                     vessels_N):
-        with dpg.window(label="AIS Data",
+        with dpg.window(label="Vessel States",
                         no_close=True,
                         min_size=[110+vessels_N*110, 168],
                         max_size=[110+vessels_N*110, 168]):
@@ -201,14 +201,6 @@ class Plotter():
                     dpg.add_table_column(label="-",
                                          tag=f"tag_id_v{n}")
                 with dpg.table_row():
-                    dpg.add_text('CPA, yds')
-                    for n in range(vessels_N-1):
-                        dpg.add_text(tag=f"tag_cpa_v{n}")
-                with dpg.table_row():
-                    dpg.add_text('TCPA')
-                    for n in range(vessels_N-1):
-                        dpg.add_text(tag=f"tag_tcpa_v{n}")
-                with dpg.table_row():
                     dpg.add_text('Range, yds')
                     for n in range(vessels_N-1):
                         dpg.add_text(tag=f"tag_range_v{n}")
@@ -216,6 +208,14 @@ class Plotter():
                     dpg.add_text('Bearing, deg')
                     for n in range(vessels_N-1):
                         dpg.add_text(tag=f"tag_bearing_v{n}")
+                with dpg.table_row():
+                    dpg.add_text('CPA, yds')
+                    for n in range(vessels_N-1):
+                        dpg.add_text(tag=f"tag_cpa_v{n}")
+                with dpg.table_row():
+                    dpg.add_text('TCPA')
+                    for n in range(vessels_N-1):
+                        dpg.add_text(tag=f"tag_tcpa_v{n}")
 
     def _add_vessels(self, vessels):
         v: Agent
