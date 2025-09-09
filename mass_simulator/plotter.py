@@ -15,6 +15,8 @@ class Plotter():
         self.playspeed = 10
         self.t_n = 0
         self._change_waypoints = False
+        self._adjust_speed = False
+        self._speed_tmp = 0
         self._waypoints_temp = {}
         self._send_waypoints = False
         self._vessel_id_foc = vessels["agent"].vessel_id
@@ -36,6 +38,11 @@ class Plotter():
         with dpg.item_handler_registry(tag="click_handler"):
             dpg.add_item_clicked_handler(callback=self._mouse_callback,
                                          button=dpg.mvMouseButton_Left)
+        # with dpg.handler_registry():
+        #     dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback,
+        #                                button=dpg.mvMouseButton_Left)
+        #     dpg.add_mouse_release_handler(callback=self._mouse_release_callback,
+        #                                   button=dpg.mvMouseButton_Left)
         dpg.bind_item_handler_registry(item="map_plot_tag",
                                        handler_registry="click_handler")
 
@@ -181,6 +188,9 @@ class Plotter():
         else:
             return []
 
+    def get_speed_change(self):
+        return self._vessel_id_foc, self._speed_tmp
+
     def _initialise_variable_viewer(self,
                                     vessels_N):
         with dpg.window(label="Vessel States",
@@ -313,9 +323,23 @@ class Plotter():
         mouse_pos = dpg.get_plot_mouse_pos()
 
         if self._select_boat(mouse_pos):
+            # dpg.configure_item('map_plot_tag',
+            #                    pan_button=dpg.mvMouseButton_Right)
+            # self._adjust_speed = True
             return
 
         self._add_temporary_waypoints(mouse_pos)
+
+    def _mouse_drag_callback(self, sender, app_data):
+        if self._adjust_speed:
+            self._speed_tmp = app_data[2]
+            print(app_data[2])
+
+    def _mouse_release_callback(self, sender, app_data):
+        dpg.configure_item('map_plot_tag',
+                           pan_button=dpg.mvMouseButton_Left)
+        self._adjust_speed = False
+        return
 
     def update_vessels(self,
                        vessels: dict):

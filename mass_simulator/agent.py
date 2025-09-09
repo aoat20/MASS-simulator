@@ -8,10 +8,19 @@ class Agent():
                  vessel_id,
                  xy_init,
                  waypoints,
+                 draught_m,
+                 speed_change_mps,
+                 speed_max_mps,
+                 turning_radius,
                  speed_kn: float = 0.,
                  speed_mps: float = 0.):
         # Agent parameters
         self.vessel_id = vessel_id
+        self.draught_m = draught_m
+        self.activity = ''
+        self.speed_change_mpsps = speed_change_mps
+        self.max_speed = speed_max_mps
+        self.turning_radius = turning_radius
         self.xy = xy_init
         self.xy_hist = [xy_init]
 
@@ -34,6 +43,9 @@ class Agent():
         # compute course to first waypoint
         self.course_deg = compute_bearing(xy_init,
                                           self.waypoints[1])
+
+        self._requested_speed_mps = speed_mps
+        self._requested_course_deg = self.course_deg
         self._compute_xy_step()
 
     def next_step(self,
@@ -41,19 +53,14 @@ class Agent():
         self.xy = [self.xy[0]+self.xy_step[0]*t_step,
                    self.xy[1]+self.xy_step[1]*t_step]
         self.xy_hist.append(self.xy)
-        # While not past the final waypoint
-        if self.waypoint_n < len(self.waypoints):
-            # Get distance to current waypoint
-            d = compute_perp_distance(self.xy,
-                                      self.xy_hist[-2],
-                                      self.waypoints[self.waypoint_n])
-            if d < 50:
-                if self.waypoint_n < len(self.waypoints)-1:
-                    self.waypoint_n += 1
-                    self.update_course(compute_bearing(self.xy,
-                                                       self.waypoints[self.waypoint_n]))
-                else:
-                    self._final_waypoint_reached = True
+
+        self._next_waypoint()
+
+        if self._requested_speed_mps != self.speed_mps:
+            self._compute_new_speed(t_step)
+
+        if self._requested_course_deg != self.course_deg:
+            self._compute_new_course(t_step)
 
     def _compute_xy_step(self):
         # Compute the step in x and y based on the course and speed
@@ -70,15 +77,55 @@ class Agent():
                               waypoints[0])
         self.update_course(brg)
 
+    def _next_waypoint(self):
+        # While not past the final waypoint
+        if self.waypoint_n < len(self.waypoints):
+            # Get distance to current waypoint
+            d = compute_perp_distance(self.xy,
+                                      self.xy_hist[-2],
+                                      self.waypoints[self.waypoint_n])
+            if d < self.turning_radius:
+                if self.waypoint_n < len(self.waypoints)-1:
+                    self.waypoint_n += 1
+                    self.update_course(compute_bearing(self.xy,
+                                                       self.waypoints[self.waypoint_n]))
+                else:
+                    self._final_waypoint_reached = True
+
     def update_course(self,
                       course_deg):
-        self.course_deg = course_deg
-        self._compute_xy_step()
+        self._requested_course_deg = course_deg
 
     def update_speed(self,
                      speed_mps):
-        self.speed_mps = speed_mps
-        self.speed_kn = mps_to_kn(speed_mps)
+        self._requested_speed_mps = speed_mps
+
+    def _compute_new_speed(self,
+                           t_step):
+        speed_change_tmp = t_step*self.speed_change_mpsps
+        if self._requested_speed_mps < self.speed_mps:
+            self.speed_mps = np.clip(self.speed_mps-speed_change_tmp,
+                                     self._requested_speed_mps,
+                                     None)
+        elif self._requested_speed_mps > self.speed_mps:
+            self.speed_mps = np.clip(self.speed_mps+speed_change_tmp,
+                                     None,
+                                     self._requested_speed_mps)
+        self.speed_kn = mps_to_kn(self.speed_mps)
+        self._compute_xy_step()
+
+    def _compute_new_course(self,
+                            t_step):
+        course_change_tmp = t_step * \
+            np.rad2deg(self.speed_mps/self.turning_radius)
+        if self._requested_course_deg < self.course_deg:
+            self.course_deg = np.clip(self.course_deg-course_change_tmp,
+                                      self._requested_course_deg,
+                                      None)
+        elif self._requested_course_deg > self.course_deg:
+            self.course_deg = np.clip(self.course_deg+course_change_tmp,
+                                      None,
+                                      self._requested_course_deg)
         self._compute_xy_step()
 
     def update_other_vessels(self,

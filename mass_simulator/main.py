@@ -184,11 +184,18 @@ class MASSsim():
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)
 
+    def set_speed(self, vessel_id, speed_mps):
+        self._vessels[vessel_id].update_speed(speed_mps)
+
     def _update_plotter(self):
         v: Agent
         self._plotter.update_time(self._world.t_elapsed)
         self._plotter.update_vessels(vessels=self._vessels)
         wp = self._plotter.get_waypoint_updates()
+        # vessel_id, speed_tmp = self._plotter.get_speed_change()
+        # self.set_speed(vessel_id=vessel_id,
+        #                speed_mps=speed_tmp)
+
         if wp:
             for v in wp:
                 self.set_waypoints(v, wp[v])
@@ -245,6 +252,10 @@ class MASSsim():
 
             vessels[v['vessel']] = Agent(vessel_id=v['vessel'],
                                          xy_init=way_points[0],
+                                         draught_m=v['draught_m'],
+                                         speed_change_mps=v['speed_change_mps'],
+                                         speed_max_mps=v['speed_max_mps'],
+                                         turning_radius=v['turning_radius'],
                                          speed_mps=speed_mps,
                                          waypoints=way_points)
 
