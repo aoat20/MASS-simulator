@@ -87,7 +87,7 @@ class Agent():
             if d < self.turning_radius:
                 if self.waypoint_n < len(self.waypoints)-1:
                     self.waypoint_n += 1
-                    self.update_course(compute_bearing(self.xy,
+                    self.update_course(compute_bearing(self.waypoints[self.waypoint_n-1],
                                                        self.waypoints[self.waypoint_n]))
                 else:
                     self._final_waypoint_reached = True
@@ -118,11 +118,12 @@ class Agent():
                             t_step):
         course_change_tmp = t_step * \
             np.rad2deg(self.speed_mps/self.turning_radius)
-        if self._requested_course_deg < self.course_deg:
+        course_diff = (self._requested_course_deg-self.course_deg-180)%360
+        if course_diff<180:
             self.course_deg = np.clip(self.course_deg-course_change_tmp,
                                       self._requested_course_deg,
                                       None)
-        elif self._requested_course_deg > self.course_deg:
+        elif course_diff>180:
             self.course_deg = np.clip(self.course_deg+course_change_tmp,
                                       None,
                                       self._requested_course_deg)
