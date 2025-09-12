@@ -196,7 +196,7 @@ class MASSsim():
         if sp_ch:
             self.set_speed(vessel_id=vessel_id,
                            speed_mps=speed_tmp)
-            self._plotter._send_speed_change = False
+            self._plotter.reset_speed_change()
 
         if wp:
             for v in wp:

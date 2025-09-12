@@ -39,6 +39,8 @@ class Plotter():
         with dpg.item_handler_registry(tag="click_handler"):
             dpg.add_item_clicked_handler(callback=self._mouse_callback,
                                          button=dpg.mvMouseButton_Left)
+            dpg.add_item_clicked_handler(callback=self._middle_click_callback,
+                                         button=dpg.mvMouseButton_Middle)
         with dpg.handler_registry():
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback,
                                        button=dpg.mvMouseButton_Left)
@@ -324,12 +326,32 @@ class Plotter():
 
     def _add_temporary_waypoints(self, xy):
         # otherwise, update the waypoints of the current focussed vessel
-        if self._change_waypoints:
-            if self._vessel_id_foc not in self._waypoints_temp:
-                self._waypoints_temp[self._vessel_id_foc] = []
+        if self._vessel_id_foc not in self._waypoints_temp:
+            self._waypoints_temp[self._vessel_id_foc] = []
+
+        d = [compute_distance(xy, xy2) for xy2
+             in self._waypoints_temp[self._vessel_id_foc]]
+
+        n_close = np.where(np.array(d) < 500)[0].tolist()
+        if n_close != []:
+            for n in n_close[::-1]:
+                self._waypoints_temp[self._vessel_id_foc].pop(n)
+        else:
             self._waypoints_temp[self._vessel_id_foc].append(xy)
+        if self._waypoints_temp[self._vessel_id_foc] == []:
+            dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
+                          [[]])
+        else:
             dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
                           list(zip(*self._waypoints_temp[self._vessel_id_foc])))
+
+    def _middle_click_callback(self, sender, app_data):
+        mouse_pos = dpg.get_plot_mouse_pos()
+        if not self._select_boat(mouse_pos):
+            self._send_waypoints = False
+            self._add_temporary_waypoints(mouse_pos)
+        else:
+            self._send_waypoints = True
 
     def _mouse_callback(self, sender, app_data):
         mouse_pos = dpg.get_plot_mouse_pos()
@@ -343,7 +365,8 @@ class Plotter():
                                show=True)
             return
 
-        self._add_temporary_waypoints(mouse_pos)
+        if self._change_waypoints:
+            self._add_temporary_waypoints(mouse_pos)
 
     def _mouse_drag_callback(self, sender, app_data):
         if self._adjust_speed:
@@ -361,10 +384,16 @@ class Plotter():
         dpg.configure_item('map_plot_tag',
                            pan_button=dpg.mvMouseButton_Left)
         self._adjust_speed = False
-        self._send_speed_change = True
+        if self._speed_tmp_kn > 1:
+            self._send_speed_change = True
         dpg.configure_item("speed_change_tag",
                            show=False)
-        return
+
+    def reset_speed_change(self):
+        self._speed_tmp_kn = 0
+        dpg.configure_item("speed_change_tag",
+                           label=f"Change speed: \n{self._speed_tmp_kn}kn")
+        self._send_speed_change = False
 
     def update_vessels(self,
                        vessels: dict):
