@@ -118,12 +118,12 @@ class Agent():
                             t_step):
         course_change_tmp = t_step * \
             np.rad2deg(self.speed_mps/self.turning_radius)
-        course_diff = (self._requested_course_deg-self.course_deg-180)%360
-        if course_diff<180:
+        course_diff = (self._requested_course_deg-self.course_deg-180) % 360
+        if course_diff < 180:
             self.course_deg = np.clip(self.course_deg-course_change_tmp,
                                       self._requested_course_deg,
                                       None)
-        elif course_diff>180:
+        elif course_diff > 180:
             self.course_deg = np.clip(self.course_deg+course_change_tmp,
                                       None,
                                       self._requested_course_deg)

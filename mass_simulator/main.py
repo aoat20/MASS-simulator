@@ -192,9 +192,11 @@ class MASSsim():
         self._plotter.update_time(self._world.t_elapsed)
         self._plotter.update_vessels(vessels=self._vessels)
         wp = self._plotter.get_waypoint_updates()
-        # vessel_id, speed_tmp = self._plotter.get_speed_change()
-        # self.set_speed(vessel_id=vessel_id,
-        #                speed_mps=speed_tmp)
+        sp_ch, vessel_id, speed_tmp = self._plotter.get_speed_change()
+        if sp_ch:
+            self.set_speed(vessel_id=vessel_id,
+                           speed_mps=speed_tmp)
+            self._plotter._send_speed_change = False
 
         if wp:
             for v in wp:
