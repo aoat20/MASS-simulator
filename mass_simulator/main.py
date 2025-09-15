@@ -164,6 +164,7 @@ class MASSsim():
         v: Agent
         self._playback.next_step()
         t, self._vessels = self._playback.get_current_step()
+        self._world.set_t(t)
         self._plotter.set_time(t)
         for v in self._vessels.values():
             v.update_other_vessels(self._vessels)

@@ -158,6 +158,7 @@ class Plotter():
         self.t_n = t
         dpg.set_value("time_slider",
                       t)
+        self.update_time(t)
 
     def _set_play(self, sender, app_data):
         self.play = app_data
