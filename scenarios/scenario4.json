@@ -7,11 +7,10 @@
         {
             "vessel": "agent",
             "speed_kn": 10,
-            "max_speed_kn": 25,
             "draught_m": 12,
             "turning_radius": 300,
-            "speed_change_mps": 0.015,
-            "speed_max_mps": 25,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-04-05.48N",
@@ -30,11 +29,10 @@
         {
             "vessel": "cargoship1",
             "speed_kn": 12,
-            "max_speed_kn": 25,
             "draught_m": 12,
             "turning_radius": 300,
-            "speed_change_mps": 0.015,
-            "speed_max_mps": 25,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-10-35.33N",
@@ -49,12 +47,10 @@
         {
             "vessel": "cargoship2",
             "speed_kn": 10,
-            "course": 250,
-            "max_speed_kn": 25,
             "draught_m": 12,
             "turning_radius": 300,
-            "speed_change_mps": 0.015,
-            "speed_max_mps": 25,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-10-16.64N",

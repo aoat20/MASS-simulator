@@ -8,18 +8,18 @@ class Agent():
                  vessel_id,
                  xy_init,
                  waypoints,
-                 draught_m,
-                 speed_change_mps,
-                 speed_max_mps,
-                 turning_radius,
+                 draught_m=0,
+                 speed_change_knps=1,
+                 speed_max_kn=20,
+                 turning_radius=100,
                  speed_kn: float = 0.,
                  speed_mps: float = 0.):
         # Agent parameters
         self.vessel_id = vessel_id
         self.draught_m = draught_m
         self.activity = ''
-        self.speed_change_mpsps = speed_change_mps
-        self.max_speed = speed_max_mps
+        self.speed_change_knps = speed_change_knps
+        self.max_speed_kn = speed_max_kn
         self.turning_radius = turning_radius
         self.xy = xy_init
         self.xy_hist = [xy_init]
@@ -102,7 +102,7 @@ class Agent():
 
     def _compute_new_speed(self,
                            t_step):
-        speed_change_tmp = t_step*self.speed_change_mpsps
+        speed_change_tmp = t_step*mps_to_kn(self.speed_change_knps)
         if self._requested_speed_mps < self.speed_mps:
             self.speed_mps = np.clip(self.speed_mps-speed_change_tmp,
                                      self._requested_speed_mps,

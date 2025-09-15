@@ -255,8 +255,8 @@ class MASSsim():
             vessels[v['vessel']] = Agent(vessel_id=v['vessel'],
                                          xy_init=way_points[0],
                                          draught_m=v['draught_m'],
-                                         speed_change_mps=v['speed_change_mps'],
-                                         speed_max_mps=v['speed_max_mps'],
+                                         speed_change_knps=v['speed_change_knps'],
+                                         speed_max_kn=v['speed_max_kn'],
                                          turning_radius=v['turning_radius'],
                                          speed_mps=speed_mps,
                                          waypoints=way_points)

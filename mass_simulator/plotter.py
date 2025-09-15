@@ -266,7 +266,7 @@ class Plotter():
                                   fill=col,
                                   thickness=0.1,
                                   tag=f"tag_triangle_{v_key}",
-                                  user_data=v.max_speed)
+                                  user_data=v.max_speed_kn)
 
             # Add annotation for vessel information
             dpg.add_plot_annotation(label=f"{v_key}\n"

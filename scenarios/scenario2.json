@@ -7,10 +7,10 @@
         {
             "vessel": "agent",
             "speed_kn": 10,
-            "max_speed_kn": 25,
-            "course": 46,
-            "speed_change_rate": 0.1,
-            "turning_rate": 1,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-05-42.30N",
@@ -29,7 +29,10 @@
         {
             "vessel": "cruiseliner1",
             "speed_kn": 4,
-            "course": 90,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-09-22.5N",

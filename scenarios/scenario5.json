@@ -7,10 +7,10 @@
         {
             "vessel": "agent",
             "speed_kn": 10,
-            "max_speed_kn": 25,
-            "course": 90,
-            "speed_change_rate": 0.01,
-            "turning_rate": 1,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-04-07.31N",
@@ -25,7 +25,10 @@
         {
             "vessel": "fishingvessel1",
             "speed_kn": 4,
-            "course": 270,
+            "draught_m": 12,
+            "turning_radius": 30,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 12,
             "waypoints": [
                 [
                     "50-04-07.31N",
@@ -40,7 +43,10 @@
         {
             "vessel": "fishingvessel2",
             "speed_kn": 4,
-            "course": 265,
+            "draught_m": 12,
+            "turning_radius": 30,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 12,
             "waypoints": [
                 [
                     "50-03-46.22N",
@@ -55,7 +61,10 @@
         {
             "vessel": "cruiseliner1",
             "speed_kn": 18,
-            "course": 90,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-05-07.09N",
@@ -70,7 +79,10 @@
         {
             "vessel": "cruiseliner2",
             "speed_kn": 23.3,
-            "course": 90,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-03-08.18N",

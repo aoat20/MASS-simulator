@@ -7,10 +7,10 @@
         {
             "vessel": "agent",
             "speed_kn": 10,
-            "max_speed_kn": 25,
-            "course": 0,
-            "speed_change_rate": 0.1,
-            "turning_rate": 1,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-10-80.16N",
@@ -25,7 +25,10 @@
         {
             "vessel": "pos1",
             "speed_kn": 16,
-            "course": 330,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-10-22.56N",
@@ -40,7 +43,10 @@
         {
             "vessel": "pos2",
             "speed_kn": 19,
-            "course": 330,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-12-02.56N",
@@ -55,7 +61,10 @@
         {
             "vessel": "neg1",
             "speed_kn": 22,
-            "course": 330,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
             "waypoints": [
                 [
                     "50-10-02.56N",
