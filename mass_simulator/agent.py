@@ -120,17 +120,16 @@ class Agent():
                             t_step):
         course_change_tmp = t_step * \
             np.rad2deg(self.speed_mps/self.turning_radius)
-        course_diff = (self._requested_course_deg-self.course_deg-180) % 360
-        print(course_diff)
-        print(self.course_deg)
-        if course_diff < 180:
-            self.course_deg = np.clip(self.course_deg-course_change_tmp,
-                                      self._requested_course_deg,
-                                      None)
-        elif course_diff > 180:
-            self.course_deg = np.clip(self.course_deg+course_change_tmp,
-                                      None,
-                                      self._requested_course_deg)
+        course_diff = (self.course_deg-self._requested_course_deg) % 360
+
+        # Don't try and change course if it's less than 3deg
+        if abs(course_diff) > 3:
+            if ((course_diff >= 0 and course_diff <= 180) or
+                    (course_diff <= -180 and course_diff >= -360)):
+                self.course_deg = self.course_deg-course_change_tmp
+
+            else:
+                self.course_deg = self.course_deg+course_change_tmp
         self._compute_xy_step()
 
     def update_other_vessels(self,
