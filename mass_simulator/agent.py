@@ -74,7 +74,7 @@ class Agent():
 
     def update_waypoints(self,
                          waypoints):
-        waypoints.append(self.goal_waypoint)
+        waypoints.insert(0, self.xy)
         self.waypoints = waypoints
         self.waypoint_n = 0
         brg = compute_bearing(self.xy,
@@ -123,7 +123,7 @@ class Agent():
         course_diff = (self.course_deg-self._requested_course_deg) % 360
 
         # Don't try and change course if it's less than 3deg
-        if abs(course_diff) > 3:
+        if abs(course_diff) > course_change_tmp:
             if ((course_diff >= 0 and course_diff <= 180) or
                     (course_diff <= -180 and course_diff >= -360)):
                 self.course_deg = self.course_deg-course_change_tmp

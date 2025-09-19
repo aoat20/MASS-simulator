@@ -14,13 +14,14 @@ class Plotter():
         self.play = True
         self.playspeed = 10
         self.t_n = 0
-        self._change_waypoints = False
         self._adjust_speed = False
         self._speed_tmp_kn = 0
         self._send_speed_change = False
         self._waypoints_temp = {}
         self._send_waypoints = False
-        self._vessel_id_foc = vessels["agent"].vessel_id
+        self._changing_wp = -1
+        self._adding_wp = -1
+        self._vessel_id_foc = next(iter(vessels))
         vessel_N = len(vessels)
 
         dpg.create_context()
@@ -35,22 +36,12 @@ class Plotter():
         #                        callback=self.save_init)
 
         self._initialise_map(xy_lims)
-
-        with dpg.item_handler_registry(tag="click_handler"):
-            dpg.add_item_clicked_handler(callback=self._mouse_callback,
-                                         button=dpg.mvMouseButton_Left)
-            dpg.add_item_clicked_handler(callback=self._middle_click_callback,
-                                         button=dpg.mvMouseButton_Middle)
-        with dpg.handler_registry():
-            dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback,
-                                       button=dpg.mvMouseButton_Left)
-            dpg.add_mouse_release_handler(callback=self._mouse_release_callback,
-                                          button=dpg.mvMouseButton_Left)
-        dpg.bind_item_handler_registry(item="map_plot_tag",
-                                       handler_registry="click_handler")
+        self._set_event_handlers()
 
         self._add_vessels(vessels=vessels)
         self._initialise_variable_viewer(vessel_N)
+        self._change_vessel_plot()
+
         if control:
             self._initialise_controls()
 
@@ -59,6 +50,23 @@ class Plotter():
                             height=600)
         dpg.setup_dearpygui()
         dpg.show_viewport()
+
+    def _set_event_handlers(self):
+        with dpg.item_handler_registry(tag="click_handler"):
+            dpg.add_item_clicked_handler(callback=self._left_click_callback,
+                                         button=dpg.mvMouseButton_Left)
+            dpg.add_item_clicked_handler(callback=self._middle_click_callback,
+                                         button=dpg.mvMouseButton_Middle)
+            dpg.add_item_clicked_handler(callback=self._right_click_callback,
+                                         button=dpg.mvMouseButton_Right)
+
+        with dpg.handler_registry():
+            dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback,
+                                       button=dpg.mvMouseButton_Left)
+            dpg.add_mouse_release_handler(callback=self._mouse_release_callback,
+                                          button=dpg.mvMouseButton_Left)
+        dpg.bind_item_handler_registry(item="map_plot_tag",
+                                       handler_registry="click_handler")
 
     def _get_plot_colors(self, n):
         cols = [[0.8660, 0.3290, 0],
@@ -72,10 +80,13 @@ class Plotter():
     def _setup_plot_themes(self, n):
         col = self._get_plot_colors(n)
 
-        with dpg.theme(tag=f'line_theme_{n}'):
+        with dpg.theme(tag=f'hist_theme_{n}'):
             with dpg.theme_component(dpg.mvLineSeries):
                 dpg.add_theme_color(dpg.mvPlotCol_Line,
                                     col,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_LineWeight,
+                                    4,
                                     category=dpg.mvThemeCat_Plots)
             with dpg.theme_component(dpg.mvScatterSeries):
                 dpg.add_theme_color(dpg.mvPlotCol_Line,
@@ -87,10 +98,38 @@ class Plotter():
                 dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize,
                                     6,
                                     category=dpg.mvThemeCat_Plots)
-        with dpg.theme(tag=f'new_wp_theme_{n}'):
-            with dpg.theme_component(dpg.mvScatterSeries):
+
+        with dpg.theme(tag=f"current_wp_theme_{n}"):
+            with dpg.theme_component(dpg.mvLineSeries):
                 dpg.add_theme_color(dpg.mvPlotCol_Line,
                                     col,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_Marker,
+                                    dpg.mvPlotMarker_Diamond,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize,
+                                    6,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_LineWeight,
+                                    2,
+                                    category=dpg.mvThemeCat_Plots)
+
+        with dpg.theme(tag=f'new_wp_theme_{n}'):
+            with dpg.theme_component(dpg.mvLineSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Line,
+                                    col,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_Marker,
+                                    dpg.mvPlotMarker_Diamond,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize,
+                                    5,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_FillAlpha,
+                                    0,
+                                    category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_LineWeight,
+                                    1,
                                     category=dpg.mvThemeCat_Plots)
         return col
 
@@ -104,6 +143,8 @@ class Plotter():
                          width=-1,
                          equal_aspects=True,
                          delay_search=True,
+                         no_menus=True,
+                         no_box_select=True,
                          tag="map_plot_tag")
             dpg.add_plot_axis(dpg.mvXAxis,
                               parent="map_plot_tag",
@@ -130,10 +171,6 @@ class Plotter():
                                max_value=100,
                                default_value=self.playspeed,
                                callback=self.set_playspeed)
-            dpg.add_checkbox(label="Change waypoints",
-                             callback=self._change_waypoints_check_cb)
-            dpg.add_button(label="Clear waypoints",
-                           callback=self._clear_wps)
 
     def add_time_scrubber(self, t_max):
         with dpg.window(label='Time',
@@ -174,14 +211,6 @@ class Plotter():
             if "waypoint_temp_" in b:
                 dpg.set_value(b,
                               [[]])
-
-    def _change_waypoints_check_cb(self, sender, app_data):
-        self._change_waypoints = app_data
-        if app_data:
-            self._waypoints_temp = {}
-            self._send_waypoints = False
-        else:
-            self._send_waypoints = True
 
     def get_waypoint_updates(self):
         if self._send_waypoints and self._waypoints_temp != {}:
@@ -260,12 +289,20 @@ class Plotter():
             # Set up triangle for vessel locations
             with dpg.draw_node(parent="map_plot_tag",
                                tag=f"tag_draw_{v_key}"):
-                dpg.draw_triangle(p1=[-100, -100],
-                                  p2=[0, 250],
-                                  p3=[100, -100],
+                dpg.draw_triangle(p1=[-200, -200],
+                                  p2=[0, 400],
+                                  p3=[200, -200],
                                   color=col,
                                   fill=col,
                                   thickness=0.1,
+                                  tag=f"tag_triangle_filled_{v_key}",
+                                  user_data=v.max_speed_kn,
+                                  show=False)
+                dpg.draw_triangle(p1=[-200, -200],
+                                  p2=[0, 400],
+                                  p3=[200, -200],
+                                  color=col,
+                                  thickness=1,
                                   tag=f"tag_triangle_{v_key}",
                                   user_data=v.max_speed_kn)
 
@@ -279,34 +316,41 @@ class Plotter():
                                     tag=f"annot_{v_key}")
 
             # Add crosses for waypoints
-            dpg.add_scatter_series(label=f"{v_key} waypoints",
-                                   x=[],
-                                   y=[],
-                                   tag=f"waypoint_plot_{v_key}",
-                                   parent="map_y_axis")
             dpg.add_line_series(x=[],
                                 y=[],
                                 parent="map_y_axis",
-                                tag=f"waypoint_line_{v_key}",
-                                segments=True)
+                                tag=f"waypoint_plot_{v_key}")
+            dpg.add_line_series(x=[],
+                                y=[],
+                                parent="map_y_axis",
+                                tag=f"waypoint_temp_{v_key}")
 
-            dpg.add_scatter_series(label=f"{v_key} new waypoints",
-                                   x=[],
-                                   y=[],
-                                   tag=f"waypoint_temp_{v_key}",
+            # Add original waypoints
+            dpg.add_scatter_series(label=f"{v_key} original waypoints",
+                                   x=[xy[0] for xy in v.waypoints],
+                                   y=[xy[1] for xy in v.waypoints],
+                                   tag=f"waypoint_orig_{v_key}",
                                    parent="map_y_axis")
 
             # Change the colours of the plots
             dpg.bind_item_theme(f"tag_hist_{v_key}",
-                                f'line_theme_{n}')
+                                f'hist_theme_{n}')
+            dpg.bind_item_theme(f"waypoint_orig_{v_key}",
+                                f'hist_theme_{n}')
             dpg.bind_item_theme(f"waypoint_plot_{v_key}",
-                                f'line_theme_{n}')
-            dpg.bind_item_theme(f"waypoint_line_{v_key}",
-                                f'line_theme_{n}')
+                                f'current_wp_theme_{n}')
             dpg.bind_item_theme(f"waypoint_temp_{v_key}",
                                 f'new_wp_theme_{n}')
 
             n += 1
+
+    def _change_vessel_plot(self):
+        for v_id in dpg.get_aliases():
+            if "tag_triangle_filled_" in v_id:
+                dpg.configure_item(v_id,
+                                   show=False)
+            dpg.configure_item(f"tag_triangle_filled_{self._vessel_id_foc}",
+                               show=True)
 
     def _select_boat(self,
                      xy,
@@ -323,28 +367,72 @@ class Plotter():
                 d = compute_distance(xy, [x, y])
                 if d < 200:
                     self._vessel_id_foc = b.replace('tag_hist_', '')
+                    self._change_vessel_plot()
                     return True
 
     def _add_temporary_waypoints(self, xy):
-        # otherwise, update the waypoints of the current focussed vessel
+        # update the waypoints of the current focussed vessel
         if self._vessel_id_foc not in self._waypoints_temp:
             self._waypoints_temp[self._vessel_id_foc] = []
 
-        d = [compute_distance(xy, xy2) for xy2
-             in self._waypoints_temp[self._vessel_id_foc]]
-
-        n_close = np.where(np.array(d) < 500)[0].tolist()
-        if n_close != []:
+        close_bool, n_close = self._is_existing_wp(xy)
+        if close_bool:
             for n in n_close[::-1]:
                 self._waypoints_temp[self._vessel_id_foc].pop(n)
         else:
             self._waypoints_temp[self._vessel_id_foc].append(xy)
+
+        self._update_waypoint_plot()
+
+    def _send_wps_cb(self, sender, app_data, user_data):
+        self._send_waypoints = True
+        self._close_wp_menu()
+
+    def _add_waypoint(self, sender, appdata, user_data):
+        self._adding_wp = user_data
+        self._close_wp_menu()
+
+    def _change_waypoint(self, sender, appdata, user_data):
+        self._changing_wp = user_data[0]
+        self._close_wp_menu()
+
+    def _remove_waypoint(self, sender, app_data, user_data):
+        n = user_data[0]
+        self._waypoints_temp[self._vessel_id_foc].pop(n)
+        self._update_waypoint_plot()
+        self._close_wp_menu()
+
+    def _update_waypoint_plot(self):
+        # Show waypoints on plot
         if self._waypoints_temp[self._vessel_id_foc] == []:
             dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
                           [[]])
         else:
             dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
                           list(zip(*self._waypoints_temp[self._vessel_id_foc])))
+
+    def _is_existing_wp(self, xy):
+        d = [compute_distance(xy, xy2) for xy2
+             in self._waypoints_temp[self._vessel_id_foc]]
+
+        n_close = np.where(np.array(d) < 500)[0].tolist()
+        if n_close == []:
+            close_wp = False
+        else:
+            close_wp = True
+        return close_wp, n_close
+
+    def _is_on_current_wps(self, xy):
+        for wp_n in range(len(self._waypoints_temp[self._vessel_id_foc])-1):
+            wp1 = self._waypoints_temp[self._vessel_id_foc][wp_n]
+            wp2 = self._waypoints_temp[self._vessel_id_foc][wp_n+1]
+            d = compute_perp_distance(wp1,
+                                      wp2,
+                                      xy)
+            if d < 500:
+                return True, wp_n
+
+        return False, -1
 
     def _middle_click_callback(self, sender, app_data):
         mouse_pos = dpg.get_plot_mouse_pos()
@@ -354,8 +442,23 @@ class Plotter():
         else:
             self._send_waypoints = True
 
-    def _mouse_callback(self, sender, app_data):
+    def _left_click_callback(self, sender, app_data):
+        self._close_wp_menu()
         mouse_pos = dpg.get_plot_mouse_pos()
+
+        if self._changing_wp != -1:
+            self._waypoints_temp[self._vessel_id_foc][self._changing_wp] = mouse_pos
+            self._changing_wp = -1
+            self._update_waypoint_plot()
+
+        if self._adding_wp != -1:
+            self._waypoints_temp[self._vessel_id_foc].insert(
+                self._adding_wp+1,
+                mouse_pos)
+            print(self._waypoints_temp)
+
+            self._adding_wp = -1
+            self._update_waypoint_plot()
 
         if self._select_boat(mouse_pos):
             dpg.configure_item('map_plot_tag',
@@ -365,9 +468,6 @@ class Plotter():
                                default_value=mouse_pos,
                                show=True)
             return
-
-        if self._change_waypoints:
-            self._add_temporary_waypoints(mouse_pos)
 
     def _mouse_drag_callback(self, sender, app_data):
         if self._adjust_speed:
@@ -390,6 +490,48 @@ class Plotter():
         dpg.configure_item("speed_change_tag",
                            show=False)
 
+    def _right_click_callback(self, sender, app_data):
+        self._close_wp_menu()
+
+        if self._vessel_id_foc not in self._waypoints_temp:
+            wp = dpg.get_value(f"waypoint_plot_{self._vessel_id_foc}")
+            wp_n = dpg.get_item_user_data(
+                f"waypoint_plot_{self._vessel_id_foc}")
+            v_xy = [dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[0][-1],
+                    dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[1][-1]]
+            self._waypoints_temp[self._vessel_id_foc] = list(zip(*wp))[wp_n:]
+            self._waypoints_temp[self._vessel_id_foc].insert(0, v_xy)
+
+        mouse_pos = dpg.get_plot_mouse_pos()
+        mouse_pos2 = dpg.get_mouse_pos()
+
+        with dpg.window(label="Waypoints",
+                        pos=mouse_pos2,
+                        no_close=True,
+                        no_collapse=True,
+                        no_move=True,
+                        tag="wp_menu_tag"):
+            dpg.add_button(label='Send',
+                           callback=self._send_wps_cb)
+
+            wp_bool, wp_close = self._is_existing_wp(mouse_pos)
+            wp_line_bool, wp_n = self._is_on_current_wps(mouse_pos)
+            if wp_bool:
+                dpg.add_button(label='Change',
+                               callback=self._change_waypoint,
+                               user_data=wp_close)
+                dpg.add_button(label='Remove',
+                               callback=self._remove_waypoint,
+                               user_data=wp_close)
+            elif wp_line_bool:
+                dpg.add_button(label='Add',
+                               callback=self._add_waypoint,
+                               user_data=wp_n)
+
+    def _close_wp_menu(self):
+        if "wp_menu_tag" in dpg.get_aliases():
+            dpg.delete_item("wp_menu_tag")
+
     def reset_speed_change(self):
         self._speed_tmp_kn = 0
         dpg.configure_item("speed_change_tag",
@@ -405,7 +547,9 @@ class Plotter():
                                      v.xy_hist,
                                      v.course_deg,
                                      v.speed_kn,
-                                     v.waypoints)
+                                     v.waypoints,
+                                     v.activity,
+                                     v.waypoint_n)
             if v.vessel_id == self._vessel_id_foc:
                 self._update_vessels_table(v.other_vessels)
 
@@ -433,7 +577,9 @@ class Plotter():
                             xy_hist,
                             course_deg,
                             speed_kn,
-                            waypoints):
+                            waypoints,
+                            activity,
+                            wp_n):
         course_rad = np.deg2rad(course_deg)
         dpg.apply_transform(f"tag_draw_{vessel_id}",
                             transform=dpg.create_translation_matrix(
@@ -448,27 +594,15 @@ class Plotter():
                                           xy[1]],
                            label=f"{vessel_id}\n"
                            f"speed {speed_kn:.1f}kn \n"
-                           f"course {course_deg:.1f}deg")
+                           f"course {course_deg:.1f}deg \n"
+                           f"{activity}")
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         if dpg.get_value(f"waypoint_plot_{vessel_id}") != wps:
             dpg.set_value(f"waypoint_plot_{vessel_id}",
                           list(zip(*waypoints)))
-
-            wp_x = [x[0] for x in waypoints]
-            wp_y = [x[1] for x in waypoints]
-            wp_x.insert(0, xy_hist[-1][0])
-            wp_y.insert(0, xy_hist[-1][1])
-            wp_x_int = list(np.interp(np.linspace(0, len(wp_x), 40),
-                                      np.linspace(0, len(wp_x), len(wp_x)),
-                                      wp_x))
-            wp_y_int = list(np.interp(np.linspace(0, len(wp_y), 40),
-                                      np.linspace(0, len(wp_y), len(wp_y)),
-                                      wp_y))
-
-            dpg.set_value(f"waypoint_line_{vessel_id}",
-                          [wp_x_int,
-                           wp_y_int])
+            dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
+                                   wp_n)
 
     def update_time(self, t):
         dpg.configure_item("time_tag",
