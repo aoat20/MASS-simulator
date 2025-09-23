@@ -21,6 +21,7 @@ class Plotter():
         self._send_waypoints = False
         self._changing_wp = -1
         self._adding_wp = -1
+        self._waypoints_changed = False
         self._vessel_id_foc = next(iter(vessels))
         vessel_N = len(vessels)
 
@@ -213,10 +214,15 @@ class Plotter():
                               [[]])
 
     def get_waypoint_updates(self):
-        if self._send_waypoints and self._waypoints_temp != {}:
-            wp_ret = self._waypoints_temp
+        if self._send_waypoints \
+                and self._waypoints_temp != {}:
+            wp_ret = {}
+            for key in self._waypoints_temp:
+                wp_ret[key] = self._waypoints_temp[key][1:]
             self._waypoints_temp = {}
             self._clear_wps([], [])
+            self._send_waypoints = False
+            self._waypoints_changed = False
             return wp_ret
         else:
             return []
@@ -382,15 +388,22 @@ class Plotter():
         else:
             self._waypoints_temp[self._vessel_id_foc].append(xy)
 
+        self._waypoints_changed = True
         self._update_waypoint_plot()
 
     def _send_wps_cb(self, sender, app_data, user_data):
-        self._send_waypoints = True
+        if self._waypoints_changed:
+            self._send_waypoints = True
         self._close_wp_menu()
 
     def _add_waypoint(self, sender, appdata, user_data):
         self._adding_wp = user_data
         self._close_wp_menu()
+        mouse_pos = dpg.get_plot_mouse_pos()
+
+        self._waypoints_temp[self._vessel_id_foc].insert(
+            self._adding_wp+1,
+            mouse_pos)
 
     def _change_waypoint(self, sender, appdata, user_data):
         self._changing_wp = user_data[0]
@@ -447,18 +460,12 @@ class Plotter():
         mouse_pos = dpg.get_plot_mouse_pos()
 
         if self._changing_wp != -1:
-            self._waypoints_temp[self._vessel_id_foc][self._changing_wp] = mouse_pos
             self._changing_wp = -1
-            self._update_waypoint_plot()
+            self._waypoints_changed = True
 
         if self._adding_wp != -1:
-            self._waypoints_temp[self._vessel_id_foc].insert(
-                self._adding_wp+1,
-                mouse_pos)
-            print(self._waypoints_temp)
-
             self._adding_wp = -1
-            self._update_waypoint_plot()
+            self._waypoints_changed = True
 
         if self._select_boat(mouse_pos):
             dpg.configure_item('map_plot_tag',
@@ -492,11 +499,11 @@ class Plotter():
 
     def _right_click_callback(self, sender, app_data):
         self._close_wp_menu()
-
         if self._vessel_id_foc not in self._waypoints_temp:
             wp = dpg.get_value(f"waypoint_plot_{self._vessel_id_foc}")
             wp_n = dpg.get_item_user_data(
                 f"waypoint_plot_{self._vessel_id_foc}")
+
             v_xy = [dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[0][-1],
                     dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[1][-1]]
             self._waypoints_temp[self._vessel_id_foc] = list(zip(*wp))[wp_n:]
@@ -599,10 +606,10 @@ class Plotter():
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         if dpg.get_value(f"waypoint_plot_{vessel_id}") != wps:
-            dpg.set_value(f"waypoint_plot_{vessel_id}",
-                          list(zip(*waypoints)))
             dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
                                    wp_n)
+            dpg.set_value(f"waypoint_plot_{vessel_id}",
+                          list(zip(*waypoints)))
 
     def update_time(self, t):
         dpg.configure_item("time_tag",
@@ -610,8 +617,19 @@ class Plotter():
 
     def is_plotter_running(self):
         if dpg.is_dearpygui_running():
+            self._dynamic_waypoint_move()
             dpg.render_dearpygui_frame()
         return dpg.is_dearpygui_running()
+
+    def _dynamic_waypoint_move(self):
+        mouse_pos = dpg.get_plot_mouse_pos()
+
+        if self._changing_wp != -1:
+            self._waypoints_temp[self._vessel_id_foc][self._changing_wp] = mouse_pos
+            self._update_waypoint_plot()
+        elif self._adding_wp != -1:
+            self._waypoints_temp[self._vessel_id_foc][self._adding_wp+1] = mouse_pos
+            self._update_waypoint_plot()
 
     def save_init(self):
         print('saving')

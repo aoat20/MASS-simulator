@@ -76,7 +76,7 @@ class Agent():
                          waypoints):
         waypoints.insert(0, self.xy)
         self.waypoints = waypoints
-        self.waypoint_n = 0
+        self.waypoint_n = 1
         brg = compute_bearing(self.xy,
                               waypoints[0])
         self.update_course(brg)
