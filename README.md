@@ -48,7 +48,7 @@ MASSsim(mode='playback',
 <img width="441" height="173" alt="Screenshot from 2025-09-05 11-31-31" src="https://github.com/user-attachments/assets/2c06a034-ee87-4684-abb2-5b9e24f8a106" />
 
 ## Manual Mode 
-To change the waypoint of a specific vessel, first click that vessel (defaults to agent), tick the "Change waypoints" box, and simply click the desired waypoints. Other vessels can then be clicked and their waypoints changed as desired. Once all the desired waypoints have been added, unclick the "Change waypoints" box and the vessels will now follow the new waypoints. If while changing waypoints you decide against them, click the "Clear waypoints" button to clear the waypoints. 
+To change the waypoints of a specific vessel, first click that vessel (defaults to agent), right click along the path or on a waypoint and click "Change" or "Add" or "Remove". If you click along the path of the vessel, the waypoint will be added in between the two waypoints either side of the path you clicked on, otherwise it will be added at the end of the current path. Other vessels can then be clicked and their waypoints changed as desired. Once all the desired waypoints have been added/changed, right click anywhere and click "Send" and the vessels will now follow the new waypoints. 
 
 Another method of adding waypoints is to left click on the vessel, then middle click all your desired waypoint locations, (reclicking a point will remove it), then middle click on the vessel to activate the waypoints. 
 
