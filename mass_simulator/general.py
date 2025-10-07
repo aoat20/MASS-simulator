@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import griddata
 
 
 def m_to_yds(m):
@@ -27,7 +28,7 @@ def compute_bearing(xy1,
 
 def compute_cpa(xy1, course1, speed_mps1,
                 xy2, course2, speed_mps2):
-    """Compute the cpa and tcpa between vessel1 and vessel2 with their 
+    """Compute the cpa and tcpa between vessel1 and vessel2 with their
     respective positions, courses and speeds"""
 
     # Compute differences
@@ -64,7 +65,7 @@ def convert_dms_to_dec(coord_dms):
 def compute_perp_distance(A,
                           B,
                           E):
-    """Find the perpendicular distance between the point E and the line 
+    """Find the perpendicular distance between the point E and the line
     connecting A and B"""
 
     # vector AB
@@ -118,3 +119,28 @@ def compute_perp_distance(A,
         d = abs(x1 * y2 - y1 * x2) / mod
 
     return d
+
+
+def compute_interp_depth_map(depth_points):
+    points = [d[0][::-1] for d in depth_points]
+    values = [d[1] for d in depth_points]
+
+    points_np = np.array(points)
+    p_min = np.min(points_np, axis=0)
+    p_max = np.max(points_np, axis=0)
+
+    grid_x, grid_y = np.mgrid[p_min[0]:p_max[0]:100,
+                              p_min[1]:p_max[1]:100]
+
+    depth_map = griddata(points,
+                         values,
+                         (grid_x, grid_y),
+                         method="linear",
+                         fill_value=0)
+
+    depth_map_norm = (depth_map-np.min(depth_map)) * \
+        (1/(np.max(depth_map)-np.min(depth_map)))
+
+    depth_map_norm_fl = np.flipud(depth_map_norm)
+
+    return depth_map_norm_fl, p_min, p_max

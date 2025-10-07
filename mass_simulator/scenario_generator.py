@@ -86,9 +86,6 @@ class ScenarioGenerator():
         dpg.configure_item("depth_img_tag",
                            show=app_data)
 
-    def _new_json_file(self):
-        pass
-
     def _initialise_map(self):
         with dpg.window(label="World",
                         tag="world_window",
@@ -266,6 +263,7 @@ class ScenarioGenerator():
             dpg.delete_item(f"vessel_params_{self._vessel_n}")
         print(self._scen_dict)
         self._vessel_n += 1
+        self._adding_wps = False
 
     def _define_new_area(self):
         pass
@@ -325,6 +323,9 @@ class ScenarioGenerator():
             file_pth = appdata["file_path_name"] + ".json"
         else:
             file_pth = appdata["file_path_name"]
+
+        # Add the depth map
+        self._scen_dict['depth_map'] = self._depth_points
 
         with open(file_pth, 'w') as f:
             # write the dict to a json file
