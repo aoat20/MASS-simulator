@@ -534,6 +534,11 @@ class Plotter():
                 dpg.add_button(label='Add',
                                callback=self._add_waypoint,
                                user_data=wp_n)
+            else:
+                n_wp = len(self._waypoints_temp[self._vessel_id_foc])-1
+                dpg.add_button(label='Add',
+                               callback=self._add_waypoint,
+                               user_data=n_wp)
 
     def _close_wp_menu(self):
         if "wp_menu_tag" in dpg.get_aliases():
