@@ -139,7 +139,7 @@ def compute_interp_depth_map(depth_points):
                          fill_value=0)
 
     depth_map_norm = (depth_map-np.min(depth_map)) * \
-        (1/(np.max(depth_map)-np.min(depth_map)))
+        (1/(1-np.min(depth_map)))
 
     depth_map_norm_fl = np.flipud(depth_map_norm)
 
