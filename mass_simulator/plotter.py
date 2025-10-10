@@ -414,6 +414,7 @@ class Plotter():
         self._waypoints_temp[self._vessel_id_foc].pop(n)
         self._update_waypoint_plot()
         self._close_wp_menu()
+        self._waypoints_changed = True
 
     def _update_waypoint_plot(self):
         # Show waypoints on plot
@@ -448,6 +449,7 @@ class Plotter():
         return False, -1
 
     def _middle_click_callback(self, sender, app_data):
+        return
         mouse_pos = dpg.get_plot_mouse_pos()
         if not self._select_boat(mouse_pos):
             self._send_waypoints = False
