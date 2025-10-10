@@ -237,8 +237,11 @@ class MASSsim():
             # Get the vessel details
             way_points = []
             for wp in v["waypoints"]:
-                wp_temp = list(p(convert_dms_to_dec(wp[1]),
-                                 convert_dms_to_dec(wp[0])))
+                if isinstance(wp, str):
+                    wp_temp = list(p(convert_dms_to_dec(wp[1]),
+                                     convert_dms_to_dec(wp[0])))
+                else:
+                    wp_temp = wp
                 # If there's a speed change, add an extra element
                 if len(wp) == 3:
                     wp_temp.append(wp[2])
