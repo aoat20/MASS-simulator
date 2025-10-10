@@ -296,10 +296,9 @@ class ScenarioGenerator():
         for n, depth_p in enumerate(self._depth_points):
             d = compute_distance(depth_p[0], userdata)
             if d < 700:
-                self._depth_points[n] = [userdata, depth]
+                self._depth_points[n][1] = depth
                 dpg.configure_item(f"annot_{n}",
-                                   label=depth,
-                                   default_value=userdata)
+                                   label=depth)
                 new_d = False
                 break
         if new_d == True:
