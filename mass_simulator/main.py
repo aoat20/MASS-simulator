@@ -237,7 +237,7 @@ class MASSsim():
             # Get the vessel details
             way_points = []
             for wp in v["waypoints"]:
-                if isinstance(wp, str):
+                if isinstance(wp[0], str):
                     wp_temp = list(p(convert_dms_to_dec(wp[1]),
                                      convert_dms_to_dec(wp[0])))
                 else:
