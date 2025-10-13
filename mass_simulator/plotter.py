@@ -502,14 +502,9 @@ class Plotter():
     def _right_click_callback(self, sender, app_data):
         self._close_wp_menu()
         if self._vessel_id_foc not in self._waypoints_temp:
-            wp = dpg.get_value(f"waypoint_plot_{self._vessel_id_foc}")
-            wp_n = dpg.get_item_user_data(
-                f"waypoint_plot_{self._vessel_id_foc}")
+            self._initialise_wp_list(self._vessel_id_foc)
 
-            v_xy = [dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[0][-1],
-                    dpg.get_value(f"tag_hist_{self._vessel_id_foc}")[1][-1]]
-            self._waypoints_temp[self._vessel_id_foc] = list(zip(*wp))[wp_n:]
-            self._waypoints_temp[self._vessel_id_foc].insert(0, v_xy)
+        self._remove_old_wps()
 
         mouse_pos = dpg.get_plot_mouse_pos()
         mouse_pos2 = dpg.get_mouse_pos()
@@ -541,6 +536,24 @@ class Plotter():
                 dpg.add_button(label='Add',
                                callback=self._add_waypoint,
                                user_data=n_wp)
+
+    def _initialise_wp_list(self, vessel_id):
+        wp = dpg.get_value(f"waypoint_plot_{vessel_id}")
+        wp_n = dpg.get_item_user_data(f"waypoint_plot_{vessel_id}")
+
+        v_xy = [dpg.get_value(f"tag_hist_{vessel_id}")[0][-1],
+                dpg.get_value(f"tag_hist_{vessel_id}")[1][-1]]
+        self._waypoints_temp[vessel_id] = list(zip(*wp))[wp_n:]
+        self._waypoints_temp[vessel_id].insert(0, v_xy)
+
+    def _remove_old_wps(self):
+        for v_id in self._waypoints_temp.keys():
+            waypoints = dpg.get_value(f"waypoint_plot_{v_id}")
+            wp_n = dpg.get_item_user_data(f"waypoint_plot_{v_id}")
+            for waypoint in list(zip(*waypoints))[0:wp_n]:
+                wp_tmp = [w for w in self._waypoints_temp[v_id]
+                          if w != waypoint]
+                self._waypoints_temp[v_id] = wp_tmp
 
     def _close_wp_menu(self):
         if "wp_menu_tag" in dpg.get_aliases():
@@ -612,9 +625,9 @@ class Plotter():
                            f"{activity}")
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
+        dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
+                               wp_n)
         if dpg.get_value(f"waypoint_plot_{vessel_id}") != wps:
-            dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
-                                   wp_n)
             dpg.set_value(f"waypoint_plot_{vessel_id}",
                           list(zip(*waypoints)))
 
