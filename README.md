@@ -57,7 +57,23 @@ The speed can be adjusted by clicking on a vessel and dragging up to the desired
 ## Test Mode 
 Test mode allows programmatic interaction with the simulator. Follow the structure shown in the example script, using the "is_episode_running()" in a while loop. 
 - "next_step()" advances a time step.
-- "get_obs()" return the observation dictionary containing 'time' and 'vessels'. 'vessels' is a dictionary of the vessels in the episode as Agent objects which contain the attributes "course_deg", "speed_kn", "wayponts" and "xy". They also have a dictionary of the CPA, TCPA, Range and Bearing to each other vessel in "other_vessels".
+- "get_obs()" return the observation dictionary containing 'time' and 'vessels'. 'vessels' is a dictionary of the vessels in the episode as Agent objects which contain the attributes "course_deg", "speed_kn", "wayponts" and "xy". They also have a dictionary of the CPA, TCPA, Range and Bearing to each other vessel in "other_vessels". Example usage:
+```python
+# Get observation dict
+obs = mass_sim.get_obs()
+
+# Get the state of the vessel called boat1
+obs['vessels']['boat1'].xy
+obs['vessels']['boat1'].speed_kn
+obs['vessels']['boat1'].course_deg
+obs['vessels']['boat1'].waypoints
+
+# Get relative state of another vessel called boat2
+obs['vessels']['boat1'].other_vessels['boat2'].cpa_m
+obs['vessels']['boat1'].other_vessels['boat2'].tcpa_s
+obs['vessels']['boat1'].other_vessels['boat2'].range_m
+obs['vessels']['boat1'].other_vessels['boat2'].bearing_deg
+```
 - "set_waypoints" allows you to set waypoints for each of the vessels. Specify the vessel_id as the first argument and the waypoints in a list as the second.
 - "save_episode()" will the save the episode log.
 
