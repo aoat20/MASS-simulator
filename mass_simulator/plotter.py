@@ -3,6 +3,7 @@ from mass_simulator.agent import Agent, OtherVessel
 import os
 import numpy as np
 from mass_simulator.general import *
+from time import time
 
 
 class Plotter():
@@ -13,6 +14,7 @@ class Plotter():
 
         self.play = True
         self.playspeed = 10
+        self.tic = time()
         self.t_n = 0
         self._adjust_speed = False
         self._speed_tmp_kn = 0
@@ -660,3 +662,10 @@ class Plotter():
 
     def tidy_up(self):
         dpg.destroy_context()
+
+    def advance_one_frame_check(self, t_step):
+        if time() - self.tic >= t_step/(self.playspeed):
+            self.tic = time()
+            return True
+        else:
+            return False
