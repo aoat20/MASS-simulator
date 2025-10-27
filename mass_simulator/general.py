@@ -26,6 +26,12 @@ def compute_bearing(xy1,
     return bearing_deg
 
 
+def compute_relative_bearing(xy1, heading1,
+                             xy2):
+    abs_brg = compute_bearing(xy1, xy2)
+    return abs_brg-heading1
+
+
 def compute_cpa(xy1, course1, speed_mps1,
                 xy2, course2, speed_mps2):
     """Compute the cpa and tcpa between vessel1 and vessel2 with their

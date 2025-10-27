@@ -143,8 +143,9 @@ class Agent():
                 range_m = compute_distance(self.xy,
                                            v.xy)
                 range_yds = m_to_yds(range_m)
-                bearing_deg = compute_bearing(self.xy,
-                                              v.xy)
+                bearing_deg = compute_relative_bearing(self.xy,
+                                                       self.course_deg,
+                                                       v.xy)
                 self.other_vessels[v.vessel_id] = OtherVessel(cpa_m=cpa_m,
                                                               cpa_yds=cpa_yds,
                                                               tcpa_s=tcpa_s,
