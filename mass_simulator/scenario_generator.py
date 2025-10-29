@@ -65,10 +65,14 @@ class ScenarioGenerator():
                         no_close=True,
                         no_move=True,
                         no_collapse=True):
-            dpg.add_button(label="Add vessel here",
-                           callback=self._add_new_boat,
-                           user_data=[mouse_pos,
-                                      mouse_pos_plot])
+            if self._adding_wps:
+                dpg.add_button(label="Done adding vessel",
+                               callback=self._done_adding_boat)
+            else:
+                dpg.add_button(label="Add vessel here",
+                               callback=self._add_new_boat,
+                               user_data=[mouse_pos,
+                                          mouse_pos_plot])
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Adjust topography",
                                callback=self._set_depth,
@@ -79,6 +83,7 @@ class ScenarioGenerator():
                 dpg.add_checkbox(label="Show depth",
                                  callback=self._show_depth_map,
                                  default_value=depth_show)
+
             dpg.add_button(label="Save scenario",
                            callback=self._save_callback)
 
@@ -98,7 +103,8 @@ class ScenarioGenerator():
                          delay_search=True,
                          no_menus=True,
                          no_box_select=True,
-                         tag="map_plot_tag")
+                         tag="map_plot_tag",
+                         pan_button=dpg.mvMouseButton_Middle)
             dpg.add_plot_axis(dpg.mvXAxis,
                               parent="map_plot_tag",
                               pan_stretch=False,
@@ -139,10 +145,10 @@ class ScenarioGenerator():
                             f'waypoint_theme_{self._vessel_n}')
 
     def _add_depth_map(self, width, height):
-        self._depth_points = [[[0, 0], 1],
-                              [[width, 0], 1],
-                              [[width, height], 1],
-                              [[0, height], 1]]
+        self._depth_points = [[[0, 0], 0],
+                              [[width, 0], 0],
+                              [[width, height], 0],
+                              [[0, height], 0]]
 
         self._update_depth_map()
         for n, d in enumerate(self._depth_points):
@@ -218,12 +224,11 @@ class ScenarioGenerator():
             dpg.add_separator()
             with dpg.group(horizontal=True):
                 dpg.add_checkbox(label="Add waypoints",
-                                 callback=self._add_wps_check)
-                dpg.add_button(label="Done",
-                               callback=self._done_adding_boat)
+                                 callback=self._add_wps_check,
+                                 default_value=True)
 
         self._waypoints_temp = [user_data[1]]
-        self._adding_wps = False
+        self._adding_wps = True
 
         self._scen_dict['vessel_details'].append(
             {"vessel": default_vals["label"],
@@ -258,10 +263,10 @@ class ScenarioGenerator():
                                label=app_data)
 
     def _done_adding_boat(self, sender, app_data, user_data):
+        self._close_rightclick_menu()
         self._scen_dict['vessel_details'][self._vessel_n]["waypoints"] = self._waypoints_temp
         if f"vessel_params_{self._vessel_n}" in dpg.get_aliases():
             dpg.delete_item(f"vessel_params_{self._vessel_n}")
-        print(self._scen_dict)
         self._vessel_n += 1
         self._adding_wps = False
 
