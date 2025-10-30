@@ -83,7 +83,7 @@ class ScenarioGenerator():
                 dpg.add_checkbox(label="Show depth",
                                  callback=self._show_depth_map,
                                  default_value=depth_show)
-
+            dpg.add_separator()
             dpg.add_button(label="Save scenario",
                            callback=self._save_callback)
 
@@ -145,10 +145,10 @@ class ScenarioGenerator():
                             f'waypoint_theme_{self._vessel_n}')
 
     def _add_depth_map(self, width, height):
-        self._depth_points = [[[0, 0], 0],
-                              [[width, 0], 0],
-                              [[width, height], 0],
-                              [[0, height], 0]]
+        self._depth_points = [[[0, 0], -100],
+                              [[width, 0], -100],
+                              [[width, height], -100],
+                              [[0, height], -100]]
 
         self._update_depth_map()
         for n, d in enumerate(self._depth_points):
@@ -221,11 +221,11 @@ class ScenarioGenerator():
                                  width=100,
                                  callback=self._add_boat_details,
                                  user_data="speed_max_kn")
-            dpg.add_separator()
-            with dpg.group(horizontal=True):
-                dpg.add_checkbox(label="Add waypoints",
-                                 callback=self._add_wps_check,
-                                 default_value=True)
+            # dpg.add_separator()
+            # with dpg.group(horizontal=True):
+            #     dpg.add_checkbox(label="Add waypoints",
+            #                      callback=self._add_wps_check,
+            #                      default_value=True)
 
         self._waypoints_temp = [user_data[1]]
         self._adding_wps = True
@@ -320,7 +320,8 @@ class ScenarioGenerator():
         self._close_rightclick_menu()
 
         # Open directory selector
-        dpg.add_file_dialog(callback=self._save_file)
+        dpg.add_file_dialog(callback=self._save_file,
+                            min_size=[100, 200])
 
     def _save_file(self, sender, appdata):
         if ".json" not in appdata['file_path_name']:
