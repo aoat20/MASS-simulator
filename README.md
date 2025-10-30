@@ -87,12 +87,14 @@ python3 scenario_generator.py
 ```
 
 This will open a map with a topography map (currently unused). To navigate the map, middle click and drag to pan and scroll to zoom in or out. Right click will open the following menu:
+
 <img width="243" height="100" alt="Screenshot from 2025-10-30 08-36-43" src="https://github.com/user-attachments/assets/7b82f7a2-c04d-47d5-9fac-b79a7d8a13a1" />
 
 This can be used to add vessels, adjust the topology of the map and save the scenario (recommended untick "Show depth").
 
 ### Adding vessels
 To add a vessel, right click in the desired location and click "Add vessel here". This will place the vessel and then open the following menu which can be used to set the vessel parameters: 
+
 <img width="323" height="169" alt="Screenshot from 2025-10-30 08-38-16" src="https://github.com/user-attachments/assets/a16fabe6-0315-4105-aba9-ad83760af275" />
 
 Left clicking anywhere on the map will add a waypoint in that location. When you're done, right click again and click "Done adding vessel". Repeat for however many vessels are desired. 
