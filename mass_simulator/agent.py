@@ -77,6 +77,7 @@ class Agent():
         waypoints.insert(0, self.xy)
         self.waypoints = waypoints
         self.waypoint_n = 1
+        self._final_waypoint_reached = False
         brg = compute_bearing(self.xy,
                               waypoints[0])
         self.update_course(brg)
@@ -89,9 +90,8 @@ class Agent():
                                       self.xy_hist[-2],
                                       self.waypoints[self.waypoint_n])
             if d < 50:
-                if self.waypoint_n < len(self.waypoints)-1:
-                    self.waypoint_n += 1
-                else:
+                self.waypoint_n += 1
+                if self.waypoint_n > len(self.waypoints)-1:
                     self._final_waypoint_reached = True
 
     def update_course(self,
