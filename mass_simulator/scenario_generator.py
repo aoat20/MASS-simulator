@@ -221,11 +221,11 @@ class ScenarioGenerator():
                                  width=100,
                                  callback=self._add_boat_details,
                                  user_data="speed_max_kn")
-            # dpg.add_separator()
-            # with dpg.group(horizontal=True):
-            #     dpg.add_checkbox(label="Add waypoints",
-            #                      callback=self._add_wps_check,
-            #                      default_value=True)
+            dpg.add_separator()
+            with dpg.group(horizontal=True):
+                dpg.add_checkbox(label="Add waypoints",
+                                 callback=self._add_wps_check,
+                                 default_value=True)
 
         self._waypoints_temp = [user_data[1]]
         self._adding_wps = True
@@ -240,6 +240,12 @@ class ScenarioGenerator():
 
     def _add_wps_check(self, sender, app_data):
         self._adding_wps = app_data
+        if app_data:
+            dpg.configure_item("map_plot_tag",
+                               pan_button=dpg.mvMouseButton_Middle)
+        else:
+            dpg.configure_item("map_plot_tag",
+                               pan_button=dpg.mvMouseButton_Left)
 
     def _add_wp(self, xy):
         self._waypoints_temp.append(xy)
