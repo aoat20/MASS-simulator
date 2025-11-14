@@ -166,8 +166,8 @@ class Agent():
         cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
         cpa_yds = m_to_yds(cpa_m)
         tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
-        if tcpa_s < 0:
-            tcpa_s = 0
+        # if tcpa_s < 0:
+        #     tcpa_s = 0
         return cpa_m, cpa_yds, tcpa_s
 
 

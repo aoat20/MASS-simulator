@@ -594,8 +594,10 @@ class Plotter():
                                        n+1,
                                        [c*255 for c in col])
             dpg.set_value(f"tag_cpa_v{n}", f"{v.cpa_yds:.0f}")
+
+            t_s = abs(np.sign(v.tcpa_s)*v.tcpa_s % 60)
             dpg.set_value(f"tag_tcpa_v{n}",
-                          f"{np.floor(v.tcpa_s/60):.0f}min {v.tcpa_s%60:.0f}s")
+                          f"{np.floor(v.tcpa_s/60):.0f}min {t_s:.0f}s")
             dpg.set_value(f"tag_range_v{n}", f"{v.range_yds:.0f}")
             dpg.set_value(f"tag_bearing_v{n}", f"{v.bearing_deg:.1f}")
             n += 1
