@@ -144,8 +144,11 @@ class MASSsim():
             self._logger.next_step(self._world.t_elapsed)
 
         v: Agent
+        # Move each vessel
         for v in self._vessels.values():
             v.next_step(self._world.t_step)
+        # Then check each vessel against each other vessel (and add to log)
+        for v in self._vessels.values():
             v.update_other_vessels(self._vessels)
 
             # Add vessel details to log
