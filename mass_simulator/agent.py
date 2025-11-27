@@ -39,6 +39,7 @@ class Agent():
         self.waypoint_n = 1
         self.goal_waypoint = waypoints[-1]
         self._final_waypoint_reached = False
+        self.waypoints_updated = 2
 
         # compute course to first waypoint
         self.course_deg = compute_bearing(xy_init,
@@ -66,6 +67,8 @@ class Agent():
         if self._requested_course_deg != self.course_deg:
             self._compute_new_course(t_step)
 
+        self.waypoints_updated -= 1
+
     def _compute_xy_step(self):
         # Compute the step in x and y based on the course and speed
         course_rad = np.deg2rad(self.course_deg)
@@ -81,6 +84,8 @@ class Agent():
         brg = compute_bearing(self.xy,
                               waypoints[0])
         self.update_course(brg)
+
+        self.waypoints_updated = 2
 
     def _next_waypoint(self):
         # While not past the final waypoint
