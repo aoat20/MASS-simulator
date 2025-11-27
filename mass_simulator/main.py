@@ -146,9 +146,11 @@ class MASSsim():
         v: Agent
         for v in self._vessels.values():
             v.next_step(self._world.t_step)
+            v.update_other_vessels(self._vessels)
+
+            # Add vessel details to log
             if hasattr(self, '_logger'):
                 self._logger.log_vessel(v)
-            v.update_other_vessels(self._vessels)
 
     def _playback_n_step(self):
         t = self._plotter.get_time()
