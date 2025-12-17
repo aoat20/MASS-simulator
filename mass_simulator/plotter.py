@@ -148,6 +148,7 @@ class Plotter():
                          delay_search=True,
                          no_menus=True,
                          no_box_select=True,
+                         pan_button=dpg.mvMouseButton_Middle,
                          tag="map_plot_tag")
             dpg.add_plot_axis(dpg.mvXAxis,
                               parent="map_plot_tag",
@@ -420,12 +421,13 @@ class Plotter():
 
     def _update_waypoint_plot(self):
         # Show waypoints on plot
-        if self._waypoints_temp[self._vessel_id_foc] == []:
-            dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
-                          [[]])
-        else:
-            dpg.set_value(f"waypoint_temp_{self._vessel_id_foc}",
-                          list(zip(*self._waypoints_temp[self._vessel_id_foc])))
+        for key, value in self._waypoints_temp.items():
+            if self._waypoints_temp[key] == []:
+                dpg.set_value(f"waypoint_temp_{key}",
+                              [[]])
+            else:
+                dpg.set_value(f"waypoint_temp_{key}",
+                              list(zip(*self._waypoints_temp[key])))
 
     def _is_existing_wp(self, xy):
         d = [compute_distance(xy, xy2) for xy2
@@ -472,8 +474,6 @@ class Plotter():
             self._waypoints_changed = True
 
         if self._select_boat(mouse_pos):
-            dpg.configure_item('map_plot_tag',
-                               pan_button=dpg.mvMouseButton_Right)
             self._adjust_speed = True
             dpg.configure_item("speed_change_tag",
                                default_value=mouse_pos,
@@ -493,8 +493,6 @@ class Plotter():
                                label=f"Change speed: \n{self._speed_tmp_kn}kn")
 
     def _mouse_release_callback(self, sender, app_data):
-        dpg.configure_item('map_plot_tag',
-                           pan_button=dpg.mvMouseButton_Left)
         self._adjust_speed = False
         if self._speed_tmp_kn > 1:
             self._send_speed_change = True
@@ -646,7 +644,16 @@ class Plotter():
         return dpg.is_dearpygui_running()
 
     def _dynamic_waypoint_move(self):
+
         mouse_pos = dpg.get_plot_mouse_pos()
+
+        if self._waypoints_temp != {}:
+            for key, value in self._waypoints_temp.items():
+                xy_hist = dpg.get_value(f"tag_hist_{key}")
+                xy_curr = [xy_hist[0][-1],
+                           xy_hist[1][-1]]
+                value[0] = xy_curr
+                self._update_waypoint_plot()
 
         if self._changing_wp != -1:
             self._waypoints_temp[self._vessel_id_foc][self._changing_wp] = mouse_pos
