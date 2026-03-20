@@ -4,6 +4,7 @@ import os
 import numpy as np
 from mass_simulator.general import *
 from time import time
+from logic_bridge import bin_constants, logic_bridge
 
 
 class Plotter():
@@ -46,7 +47,7 @@ class Plotter():
         self._change_vessel_plot()
 
         if control:
-            self._initialise_controls()
+            self._initialise_controls(vessels)
 
         dpg.create_viewport(title="MASS Simulator",
                             width=600,
@@ -68,6 +69,7 @@ class Plotter():
                                        button=dpg.mvMouseButton_Left)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback,
                                           button=dpg.mvMouseButton_Left)
+            dpg.add_key_press_handler(callback=self._key_press_callback)
         dpg.bind_item_handler_registry(item="map_plot_tag",
                                        handler_registry="click_handler")
 
@@ -161,7 +163,7 @@ class Plotter():
             dpg.bind_item_handler_registry(f"map_y_axis",
                                            "click_handler")
 
-    def _initialise_controls(self):
+    def _initialise_controls(self, vessels):
         with dpg.window(label='Controls',
                         tag="tag_control",
                         min_size=[250, 140],
@@ -175,6 +177,47 @@ class Plotter():
                                max_value=100,
                                default_value=self.playspeed,
                                callback=self.set_playspeed)
+
+            with dpg.menu(label="Segmentation layers"):
+                for v_key in vessels:
+                    dpg.add_checkbox(label=f"{v_key}",
+                                     callback=self._add_seg_layers,
+                                     user_data=v_key)
+
+    def _add_seg_layers(self, sender, app_data, user_data):
+        # If the tag isn't already switched, add it
+        dpg.configure_item(item=f"tag_seg_{user_data}",
+                           show=app_data)
+
+    def _initialise_segmentation(self,
+                                 v_key,
+                                 col,
+                                 ):
+
+        # Draw the segmentation lines
+        with dpg.draw_node(parent="map_plot_tag",
+                           tag=f"tag_seg_{v_key}",
+                           show=False):
+
+            # Make the lines translucent
+            col_tmp = col + [0.3*255]
+
+            # Draw range circles
+            for d in bin_constants.RANGE_BINS:
+                dpg.draw_circle([0, 0],
+                                d[2],
+                                color=col_tmp,
+                                thickness=0.1,
+                                )
+
+            for sect in bin_constants.SECTOR:
+                th_1 = logic_bridge.segment_to_bearing(self, segment=sect[1])
+                dpg.draw_line([0., 0.],
+                              [1000000.*np.cos((th_1[0]*np.pi/180.)),
+                               1000000.*np.sin((th_1[0]*np.pi/180.))],
+                              color=col_tmp,
+                              thickness=0.1,
+                              )
 
     def add_time_scrubber(self, t_max):
         with dpg.window(label='Time',
@@ -282,11 +325,22 @@ class Plotter():
                                 tag=f"speed_change_tag",
                                 show=False)
 
+        # Add an annotation for later use on the mouse cursor
+        dpg.add_plot_annotation(label="",
+                                default_value=[0, 0],
+                                offset=[-5, -5],
+                                parent='map_plot_tag',
+                                tag=f"tag_annot_seg",
+                                show=False)
+
         for v_key in vessels:
             v = vessels[v_key]
 
             # Setup plot colours for the boat
             col = self._setup_plot_themes(n)
+
+            self._initialise_segmentation(v_key,
+                                          col)
 
             # Set up line for history
             dpg.add_line_series(label=v_key,
@@ -537,6 +591,10 @@ class Plotter():
                                callback=self._add_waypoint,
                                user_data=n_wp)
 
+    def _key_press_callback(self, sender, app_data):
+        if dpg.is_key_pressed(dpg.mvKey_Spacebar):
+            self.set_play(not self.play)
+
     def _initialise_wp_list(self, vessel_id):
         wp = dpg.get_value(f"waypoint_plot_{vessel_id}")
         wp_n = dpg.get_item_user_data(f"waypoint_plot_{vessel_id}")
@@ -569,14 +627,7 @@ class Plotter():
                        vessels: dict):
         v: Agent
         for v in vessels.values():
-            self._update_vessel_plot(v.vessel_id,
-                                     v.xy,
-                                     v.xy_hist,
-                                     v.course_deg,
-                                     v.speed_kn,
-                                     v.waypoints,
-                                     v.activity,
-                                     v.waypoint_n)
+            self._update_vessel_plot(vessel=v)
             if v.vessel_id == self._vessel_id_foc:
                 self._update_vessels_table(v.other_vessels)
 
@@ -601,15 +652,22 @@ class Plotter():
             n += 1
 
     def _update_vessel_plot(self,
-                            vessel_id,
-                            xy,
-                            xy_hist,
-                            course_deg,
-                            speed_kn,
-                            waypoints,
-                            activity,
-                            wp_n):
-        course_rad = np.deg2rad(course_deg)
+                            vessel: Agent):
+
+        vessel_id = vessel.vessel_id
+        xy = vessel.xy
+        xy_hist = vessel.xy_hist
+        course_deg = vessel.course_deg
+        speed_kn = vessel.speed_kn
+        waypoints = vessel.waypoints
+        activity = vessel.activity
+        wp_n = vessel.waypoint_n
+
+        course_rad = (course_deg*np.pi/180.)
+        dpg.apply_transform(f"tag_seg_{vessel_id}",
+                            transform=dpg.create_translation_matrix(
+                                [xy[0], xy[1]])*dpg.create_rotation_matrix(course_rad,
+                                                                           [0, 0, -1]))
         dpg.apply_transform(f"tag_draw_{vessel_id}",
                             transform=dpg.create_translation_matrix(
                                 [xy[0], xy[1]])*dpg.create_rotation_matrix(course_rad,
@@ -624,7 +682,8 @@ class Plotter():
                            label=f"{vessel_id}\n"
                            f"speed {speed_kn:.1f}kn \n"
                            f"course {course_deg:.1f}deg \n"
-                           f"{activity}")
+                           f"{activity}",
+                           user_data=xy+[course_deg])
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
@@ -643,12 +702,47 @@ class Plotter():
             dpg.render_dearpygui_frame()
         return dpg.is_dearpygui_running()
 
+    def _update_seg_annot(self, mouse_pos):
+
+        tag_segs = [x for x in dpg.get_aliases() if "tag_seg_" in x]
+
+        label_tmp = ""
+        for t in tag_segs:
+            if dpg.get_item_configuration(t)["show"]:
+                v_id = t[8:]
+                v_xy_course = dpg.get_item_user_data(f"annot_{v_id}")
+                # compute range segment
+                d = np.sqrt(np.square(mouse_pos[0]-v_xy_course[0])
+                            + np.square(mouse_pos[1]-v_xy_course[1]))
+                d_seg = [b[0] for b in bin_constants.RANGE_BINS if d >
+                         b[1] and d < b[2]][0]
+                # compute bearing segment
+                brg_deg = (np.atan2(mouse_pos[0]-v_xy_course[0],
+                                    mouse_pos[1]-v_xy_course[1])*180/np.pi) % 360
+                brg_deg_adj = brg_deg - v_xy_course[2]
+                lb = logic_bridge()
+                brg_sect = lb.bearing_to_sector(brg_deg_adj)
+                label_tmp = label_tmp + f"{v_id}: {d_seg} on {brg_sect}\n"
+
+        if label_tmp != "":
+            dpg.configure_item(f"tag_annot_seg",
+                               default_value=[mouse_pos[0],
+                                              mouse_pos[1]],
+                               label=label_tmp,
+                               show=True)
+        else:
+            dpg.configure_item(f"tag_annot_seg",
+                               show=False)
+
     def _dynamic_waypoint_move(self):
 
         mouse_pos = dpg.get_plot_mouse_pos()
 
+        # If the segmentation layer is on, show the segment next to the cursor
+        self._update_seg_annot(mouse_pos=mouse_pos)
         if self._waypoints_temp != {}:
             for key, value in self._waypoints_temp.items():
+                # Set the first value to the current position so it tracks the boat
                 xy_hist = dpg.get_value(f"tag_hist_{key}")
                 xy_curr = [xy_hist[0][-1],
                            xy_hist[1][-1]]
@@ -678,3 +772,6 @@ class Plotter():
             return True
         else:
             return False
+
+    def update_every_frame(self):
+        mouse_pos = dpg.get_plot_mouse_pos()
