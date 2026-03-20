@@ -159,20 +159,14 @@ class Agent():
                                                               bearing_deg=bearing_deg)
 
     def compute_cpa_tcpa(self, xy, speed_mps, course_deg):
-        # Compute differences
-        dv_x = self.speed_mps*np.sin(np.deg2rad(self.course_deg)) - \
-            speed_mps*np.sin(np.deg2rad(course_deg))
-        dv_y = self.speed_mps*np.cos(np.deg2rad(self.course_deg)) - \
-            speed_mps*np.cos(np.deg2rad(course_deg))
-        dx = self.xy[0] - xy[0]
-        dy = self.xy[1] - xy[1]
 
-        # CPA and TCPA
-        cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
-        cpa_yds = m_to_yds(cpa_m)
-        tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
-        # if tcpa_s < 0:
-        #     tcpa_s = 0
+        cpa_m, cpa_yds, tcpa_s = compute_cpa(self.xy,
+                                             self.course_deg,
+                                             self.speed_mps,
+                                             xy,
+                                             course_deg,
+                                             speed_mps)
+
         return cpa_m, cpa_yds, tcpa_s
 
 
