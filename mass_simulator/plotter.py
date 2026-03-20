@@ -332,6 +332,13 @@ class Plotter():
                                 parent='map_plot_tag',
                                 tag=f"tag_annot_seg",
                                 show=False)
+        # Add a second annotation for later use on the mouse cursor
+        dpg.add_plot_annotation(label="",
+                                default_value=[0, 0],
+                                offset=[5, 5],
+                                parent='map_plot_tag',
+                                tag=f"tag_annot_cpa",
+                                show=False)
 
         for v_key in vessels:
             v = vessels[v_key]
@@ -376,7 +383,7 @@ class Plotter():
                                     default_value=[0, 0],
                                     offset=[5, 5],
                                     parent='map_plot_tag',
-                                    tag=f"annot_{v_key}")
+                                    tag=f"v_annot_{v_key}")
 
             # Add crosses for waypoints
             dpg.add_line_series(x=[],
@@ -522,10 +529,12 @@ class Plotter():
         if self._changing_wp != -1:
             self._changing_wp = -1
             self._waypoints_changed = True
+            self._hide_cpa()
 
         if self._adding_wp != -1:
             self._adding_wp = -1
             self._waypoints_changed = True
+            self._hide_cpa()
 
         if self._select_boat(mouse_pos):
             self._adjust_speed = True
@@ -659,6 +668,7 @@ class Plotter():
         xy_hist = vessel.xy_hist
         course_deg = vessel.course_deg
         speed_kn = vessel.speed_kn
+        speed_mps = vessel.speed_mps
         waypoints = vessel.waypoints
         activity = vessel.activity
         wp_n = vessel.waypoint_n
@@ -676,14 +686,14 @@ class Plotter():
         dpg.set_value(f"tag_hist_{vessel_id}",
                       list(zip(*xy_hist)))
 
-        dpg.configure_item(f"annot_{vessel_id}",
+        dpg.configure_item(f"v_annot_{vessel_id}",
                            default_value=[xy[0],
                                           xy[1]],
                            label=f"{vessel_id}\n"
                            f"speed {speed_kn:.1f}kn \n"
                            f"course {course_deg:.1f}deg \n"
                            f"{activity}",
-                           user_data=xy+[course_deg])
+                           user_data=xy+[course_deg]+[speed_mps])
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
@@ -710,7 +720,7 @@ class Plotter():
         for t in tag_segs:
             if dpg.get_item_configuration(t)["show"]:
                 v_id = t[8:]
-                v_xy_course = dpg.get_item_user_data(f"annot_{v_id}")
+                v_xy_course = dpg.get_item_user_data(f"v_annot_{v_id}")
                 # compute range segment
                 d = np.sqrt(np.square(mouse_pos[0]-v_xy_course[0])
                             + np.square(mouse_pos[1]-v_xy_course[1]))
@@ -722,7 +732,7 @@ class Plotter():
                 brg_deg_adj = brg_deg - v_xy_course[2]
                 lb = logic_bridge()
                 brg_sect = lb.bearing_to_sector(brg_deg_adj)
-                label_tmp = label_tmp + f"{v_id}: {d_seg} on {brg_sect}\n"
+                label_tmp += f"{v_id}: {d_seg} on {brg_sect}\n"
 
         if label_tmp != "":
             dpg.configure_item(f"tag_annot_seg",
@@ -733,6 +743,40 @@ class Plotter():
         else:
             dpg.configure_item(f"tag_annot_seg",
                                show=False)
+
+    def _compute_new_cpa(self, mouse_pos):
+        # Get focussed vessel state
+        xy_course_speed = dpg.get_item_user_data(
+            f"v_annot_{self._vessel_id_foc}")
+        xy1 = xy_course_speed[0:2]
+        speed_mps1 = xy_course_speed[3]
+        course_deg_new = 90 - np.atan2(mouse_pos[1]-xy1[1],
+                                       mouse_pos[0]-xy1[0])*180/np.pi
+
+        # Get forecast CPA to every other vessel
+        v_other = [v for v in dpg.get_aliases()
+                   if "v_annot_" in v]
+        label_tmp = "New CPA: \n"
+        for v in v_other:
+            if v != f"v_annot_{self._vessel_id_foc}":
+                xy_course_speed2 = dpg.get_item_user_data(v)
+                _, cpa_yds, _ = compute_cpa(xy1=xy1,
+                                            course1=course_deg_new,
+                                            speed_mps1=speed_mps1,
+                                            xy2=xy_course_speed2[0:2],
+                                            course2=xy_course_speed2[2],
+                                            speed_mps2=xy_course_speed2[3])
+                label_tmp += f"{v[8:]}: {cpa_yds}yds \n"
+
+        dpg.configure_item(f"tag_annot_cpa",
+                           default_value=[mouse_pos[0],
+                                          mouse_pos[1]],
+                           label=label_tmp,
+                           show=True)
+
+    def _hide_cpa(self):
+        dpg.configure_item(f"tag_annot_cpa",
+                           show=False)
 
     def _dynamic_waypoint_move(self):
 
@@ -750,11 +794,19 @@ class Plotter():
                 self._update_waypoint_plot()
 
         if self._changing_wp != -1:
-            self._waypoints_temp[self._vessel_id_foc][self._changing_wp] = mouse_pos
-            self._update_waypoint_plot()
+            wp_n = self._changing_wp
+            self._add_or_change_wps(wp_n, mouse_pos)
         elif self._adding_wp != -1:
-            self._waypoints_temp[self._vessel_id_foc][self._adding_wp+1] = mouse_pos
-            self._update_waypoint_plot()
+            wp_n = self._adding_wp+1
+            self._add_or_change_wps(wp_n, mouse_pos)
+
+    def _add_or_change_wps(self, wp_n, mouse_pos):
+        self._waypoints_temp[self._vessel_id_foc][wp_n] = mouse_pos
+        self._update_waypoint_plot()
+        wp_current = dpg.get_item_user_data(
+            f"waypoint_plot_{self._vessel_id_foc}")
+        if wp_n == wp_current or wp_n == 1:
+            self._compute_new_cpa(mouse_pos)
 
     def save_init(self):
         print('saving')
@@ -772,6 +824,3 @@ class Plotter():
             return True
         else:
             return False
-
-    def update_every_frame(self):
-        mouse_pos = dpg.get_plot_mouse_pos()
