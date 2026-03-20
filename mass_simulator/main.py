@@ -3,6 +3,7 @@ from mass_simulator.world import World
 from mass_simulator.plotter import Plotter
 from mass_simulator.logger import Logger
 from mass_simulator.playback import Playback
+from logic_bridge import logic_bridge
 import os
 import json
 from mass_simulator.general import *
@@ -18,6 +19,8 @@ class MASSsim():
                  log_file: int | str = ""):
 
         self.termination_reason = ""
+
+        self.lb = logic_bridge()
 
         if mode == "manual":
             self._start_manual(scenario=scenario,
@@ -74,7 +77,7 @@ class MASSsim():
 
         # When finished, save and tidy up
         if hasattr(self, "_logger"):
-            self._logger.save_log_file()
+            self.save_episode()
 
     def _playback_plotter_loop(self):
         while self._is_plotter_running():
@@ -130,15 +133,16 @@ class MASSsim():
 
     def save_episode(self):
         self._logger.save_log_file()
+        dir_tmp = self._logger.save_path[:-5]
+        self.lb.output_to_txt(save_loc=dir_tmp)
 
     def _manualtest_next_step(self):
+        # If there's a plotter active, check whether to advance a frame
         if hasattr(self, "_plotter"):
-            if self._plotter.advance_one_frame_check(self._world.t_step):
-                self._advance_one_step()
-        else:
-            self._advance_one_step()
+            if not self._plotter.advance_one_frame_check(self._world.t_step):
+                return
 
-    def _advance_one_step(self):
+        # Go to the next step
         self._world.next_step()
         if hasattr(self, '_logger'):
             self._logger.next_step(self._world.t_elapsed)
@@ -154,6 +158,12 @@ class MASSsim():
             # Add vessel details to log
             if hasattr(self, '_logger'):
                 self._logger.log_vessel(v)
+
+        # Get observations and convert into discrete logic
+        obs, _ = self.get_obs()
+        self.lb.add_obs_to_log(obs)
+        logic_obs = self.lb.next_step()
+        return obs, logic_obs
 
     def _playback_n_step(self):
         t = self._plotter.get_time()
@@ -175,16 +185,18 @@ class MASSsim():
 
     def next_step(self):
         if self.is_episode_running():
-            self._manualtest_next_step()
+            obs, logic_obs = self._manualtest_next_step()
         if hasattr(self, '_plotter'):
             if self._is_plotter_running():
                 self._update_plotter()
+
+        return obs, logic_obs
 
     def get_obs(self):
         obs_dict = {}
         obs_dict['time_s'] = self._world.t_elapsed
         obs_dict['vessels'] = self._vessels
-        return obs_dict
+        return obs_dict, self.lb.log[self.lb.n-1]
 
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)
