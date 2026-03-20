@@ -48,9 +48,7 @@ def compute_cpa(xy1, course1, speed_mps1,
     cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
     cpa_yds = m_to_yds(cpa_m)
     tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
-    if tcpa_s < 0:
-        tcpa_s = -1
-    return cpa_yds, tcpa_s
+    return cpa_m, cpa_yds, tcpa_s
 
 
 def compute_distance(xy1,
