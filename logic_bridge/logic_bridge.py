@@ -1,5 +1,5 @@
 import numpy as np
-from bin_constants import bin_constants
+from logic_bridge.bin_constants import bin_constants
 from mass_simulator import general, agent
 import matplotlib.pyplot as plt
 

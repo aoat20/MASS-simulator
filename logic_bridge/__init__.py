@@ -1,2 +1,2 @@
 from .logic_bridge import logic_bridge
-from .logic_bridge import bin_constants
+from .bin_constants import bin_constants
