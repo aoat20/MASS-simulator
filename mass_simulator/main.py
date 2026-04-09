@@ -140,7 +140,8 @@ class MASSsim():
         # If there's a plotter active, check whether to advance a frame
         if hasattr(self, "_plotter"):
             if not self._plotter.advance_one_frame_check(self._world.t_step):
-                return
+                obs, logic_obs = self.get_obs()
+                return obs, logic_obs
 
         # Go to the next step
         self._world.next_step()
@@ -184,13 +185,13 @@ class MASSsim():
             self._playback_step_update()
 
     def next_step(self):
-        if self.is_episode_running():
-            obs, logic_obs = self._manualtest_next_step()
         if hasattr(self, '_plotter'):
             if self._is_plotter_running():
                 self._update_plotter()
 
-        return obs, logic_obs
+        if self.is_episode_running():
+            obs, logic_obs = self._manualtest_next_step()
+            return obs, logic_obs
 
     def get_obs(self):
         obs_dict = {}

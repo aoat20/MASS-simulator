@@ -20,10 +20,10 @@ mass_sim = MASSsim(scenario=4,
 # Run until mission is finished
 while mass_sim.is_episode_running():
     # Advance to the next time step
-    mass_sim.next_step()
+    obs, obs_log = mass_sim.next_step()
 
     # Get the observations
-    obs = mass_sim.get_obs()
+    obs, obs_log = mass_sim.get_obs()
 
     if obs['time_s'] == 250:
         mass_sim.set_waypoints('agent',
