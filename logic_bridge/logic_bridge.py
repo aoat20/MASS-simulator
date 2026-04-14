@@ -65,6 +65,9 @@ class logic_bridge():
             cpa_bin = self.cpa_to_bin(kwargs['cpa_m'])
             log_entry = f"cpa({v_id1},{v_id2},{cpa_bin})"
 
+        if "action" in kwargs:
+            pass
+
         if log_entry:
             self.log[self.n].append(log_entry)
 
@@ -115,6 +118,7 @@ class logic_bridge():
                                             waypoint=wp,
                                             wp_n=f"{v_n}_{n}",
                                             course_deg=obs["vessels"][key2].course_deg)
+
                         n += 1
             v_n += 1
 

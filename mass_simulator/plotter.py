@@ -457,8 +457,21 @@ class Plotter():
 
     def _send_wps_cb(self, sender, app_data, user_data):
         if self._waypoints_changed:
+            self._set_action_urgency(user_data)
             self._send_waypoints = True
         self._close_wp_menu()
+
+    def _set_action_urgency(self, mouse_pos):
+        with dpg.window(label="Urgency",
+                        pos=mouse_pos,
+                        no_close=True,
+                        no_collapse=True,
+                        no_move=True,
+                        tag="wp_menu_tag"):
+            dpg.add_button(label='N/A')
+            dpg.add_button(label="Early")
+            dpg.add_button(label="Standard")
+            dpg.add_button(label="Urgent")
 
     def _add_waypoint(self, sender, appdata, user_data):
         self._adding_wp = user_data
@@ -579,7 +592,8 @@ class Plotter():
                         no_move=True,
                         tag="wp_menu_tag"):
             dpg.add_button(label='Send',
-                           callback=self._send_wps_cb)
+                           callback=self._send_wps_cb,
+                           user_data=mouse_pos2)
 
             wp_bool, wp_close = self._is_existing_wp(mouse_pos)
             wp_line_bool, wp_n = self._is_on_current_wps(mouse_pos)
