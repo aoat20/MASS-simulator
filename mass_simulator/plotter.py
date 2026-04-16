@@ -458,7 +458,6 @@ class Plotter():
     def _send_wps_cb(self, sender, app_data, user_data):
         if self._waypoints_changed:
             self._set_action_urgency_menu(user_data)
-            self._send_waypoints = True
         self._close_wp_menu()
 
     def _set_action_urgency_menu(self, mouse_pos):
@@ -473,9 +472,10 @@ class Plotter():
             dpg.add_button(label="Standard", callback=self._set_action_urgency)
             dpg.add_button(label="Urgent", callback=self._set_action_urgency)
 
-    def _set_action_urgency(self,sender,appdata):
-        print(appdata)
-        pass
+    def _set_action_urgency(self, sender, appdata):
+        self.urgency = dpg.get_item_label(sender)
+        self._send_waypoints = True
+        dpg.delete_item("urgency_menu_tag")
 
     def _add_waypoint(self, sender, appdata, user_data):
         self._adding_wp = user_data
