@@ -461,7 +461,7 @@ class Plotter():
         self._close_wp_menu()
 
     def _set_action_urgency_menu(self, mouse_pos):
-        with dpg.window(label="Urgency",
+        with dpg.window(label="Timeliness",
                         pos=mouse_pos,
                         no_close=True,
                         no_collapse=True,
@@ -567,14 +567,14 @@ class Plotter():
                 f"tag_triangle_{self._vessel_id_foc}")
 
             self._speed_tmp_kn = np.clip(-app_data[2]/10,
-                                         0,
+                                         -0.1,
                                          max_speed)
             dpg.configure_item("speed_change_tag",
                                label=f"Change speed: \n{self._speed_tmp_kn}kn")
 
     def _mouse_release_callback(self, sender, app_data):
         self._adjust_speed = False
-        if self._speed_tmp_kn > 1:
+        if self._speed_tmp_kn > 0:
             self._send_speed_change = True
         dpg.configure_item("speed_change_tag",
                            show=False)
@@ -784,7 +784,7 @@ class Plotter():
                                             xy2=xy_course_speed2[0:2],
                                             course2=xy_course_speed2[2],
                                             speed_mps2=xy_course_speed2[3])
-                label_tmp += f"{v[8:]}: {cpa_yds}yds \n"
+                label_tmp += f"{v[8:]}: {cpa_yds:.0f}yds \n"
 
         dpg.configure_item(f"tag_annot_cpa",
                            default_value=[mouse_pos[0],
