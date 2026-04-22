@@ -246,7 +246,6 @@ class logic_bridge():
         wp: str
         for wp in waypoint_logic:
             wp_list = wp.strip("add_waypoint").strip("()").split(",")
-            print(wp_list)
             v_0 = wp_list[0]
             v_1 = wp_list[2]
             v_sector = wp_list[3]
@@ -272,10 +271,10 @@ class logic_bridge():
         #                    np.min(self.xy_mg[1]), np.max(self.xy_mg[1])],
         #            origin='lower')
         # plt.show()
-        x_out = np.mean(self.xy_mg[0].flatten()[self.wp_area])
-        y_out = np.mean(self.xy_mg[1].flatten()[self.wp_area])
+        x_out = np.mean(self.xy_mg[0].flatten()[self.wp_area]).tolist()
+        y_out = np.mean(self.xy_mg[1].flatten()[self.wp_area]).tolist()
 
-        return [x_out, y_out]
+        return v_0, [x_out, y_out]
 
     def output_to_txt(self,
                       save_loc="log.txt",

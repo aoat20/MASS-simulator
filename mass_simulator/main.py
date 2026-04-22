@@ -199,6 +199,12 @@ class MASSsim():
         obs_dict['vessels'] = self._vessels
         return obs_dict, self.lb.log[self.lb.n-1]
 
+    def send_waypoint_logic(self, waypoint_logic):
+        vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
+                                                              vessels=self._vessels)
+        self.set_waypoints(vessel_id=vessel,
+                           waypoints_utm=[wp_xy])
+
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)
 
