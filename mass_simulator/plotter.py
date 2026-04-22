@@ -457,7 +457,9 @@ class Plotter():
 
     def _send_wps_cb(self, sender, app_data, user_data):
         if self._waypoints_changed:
-            self._set_action_urgency_menu(user_data)
+            self._send_waypoints = True
+
+            # self._set_action_urgency_menu(user_data)
         self._close_wp_menu()
 
     def _set_action_urgency_menu(self, mouse_pos):
