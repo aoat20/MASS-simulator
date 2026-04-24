@@ -25,10 +25,19 @@ while mass_sim.is_episode_running():
     # Get the observations
     obs, obs_log = mass_sim.get_obs()
 
+    # Do actions (the time is arbitrary)
     if obs['time_s'] == 250:
+        # Set waypoint location
         mass_sim.set_waypoints('agent',
                                [[430_000,
                                  5_555_000]])
+    
+    if obs['time_s'] == 300:
+        # Set waypoint location with logical statements
+        mass_sim.send_waypoint_logic(
+            ["add_waypoint(agent,1_1,agent,port_beam_forward,middle)",
+             "add_waypoint(agent,1_1,cruiseliner1,starboard_quarter_aft,middle)"])
+
 mass_sim.save_episode()
 
 # Playback one of the log files
