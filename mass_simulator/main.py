@@ -7,7 +7,7 @@ from logic_bridge import logic_bridge
 import os
 import json
 from mass_simulator.general import *
-import pyproj
+import utm
 
 
 class MASSsim():
@@ -278,11 +278,6 @@ class MASSsim():
 
     def _setup_scene(self, conf):
         # Set up utm conversion
-        p = pyproj.Proj(proj='utm',
-                        zone=30,
-                        ellps='WGS84',
-                        preserve_units=False)
-
         params = conf['params']
 
         # initialise the other vessels
@@ -293,8 +288,8 @@ class MASSsim():
             way_points = []
             for wp in v["waypoints"]:
                 if isinstance(wp[0], str):
-                    wp_temp = list(p(convert_dms_to_dec(wp[1]),
-                                     convert_dms_to_dec(wp[0])))
+                    wp_temp = utm.from_latlon(convert_dms_to_dec(wp[0]),
+                                              convert_dms_to_dec(wp[1]))[0:2]
                 else:
                     wp_temp = wp
                 # If there's a speed change, add an extra element
