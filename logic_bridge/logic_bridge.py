@@ -68,6 +68,9 @@ class logic_bridge():
         if "action" in kwargs:
             pass
 
+        if "resume" in kwargs:
+            log_entry = f"resume({kwargs['vessel']})"
+
         if log_entry:
             self.log[self.n].append(log_entry)
 
@@ -102,7 +105,11 @@ class logic_bridge():
                                 vessel2=key2,
                                 tcpa_s=value2.tcpa_s)
 
-                if value1.waypoints_updated == 1:
+                if value1.resuming_mission == True:
+                    self.add_to_log(resume=True,
+                                    vessel=key1)
+                    value1.resuming_mission = False
+                elif value1.waypoints_updated == 1:
                     n = 0
                     for wp in value1.waypoints[1:]:
                         if not np.isnan(wp[0]):

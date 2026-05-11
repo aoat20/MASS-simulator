@@ -52,7 +52,8 @@ class Logger():
                                                         'course_deg': vessel.course_deg,
                                                         'speed_kn': vessel.speed_kn,
                                                         'speed_mps': vessel.speed_mps,
-                                                        'waypoints': vessel.waypoints})
+                                                        'waypoints': vessel.waypoints,
+                                                        'resume_mission': vessel.resuming_mission})
 
     def next_step(self, t):
         self.log_dict['log'].append({"vessels": []})

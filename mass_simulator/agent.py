@@ -23,6 +23,7 @@ class Agent():
         self.turning_radius = turning_radius
         self.xy = xy_init
         self.xy_hist = [xy_init]
+        self.resuming_mission = False
 
         # Set boat initial speed in either knots or m/s
         if speed_kn:
@@ -78,6 +79,7 @@ class Agent():
                         self.speed_mps*np.cos(course_rad)]
 
     def resume_mission(self):
+        self.resuming_mission = True
         self.update_waypoints([self.goal_waypoint])
 
     def update_waypoints(self,
@@ -89,7 +91,6 @@ class Agent():
         brg = compute_bearing(self.xy,
                               waypoints[0])
         self.update_course(brg)
-
         self.waypoints_updated = 2
 
     def _next_waypoint(self):

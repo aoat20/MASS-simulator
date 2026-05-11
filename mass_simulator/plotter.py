@@ -584,6 +584,8 @@ class Plotter():
 
     def _right_click_callback(self, sender, app_data):
         self._close_wp_menu()
+        self._changing_wp = -1
+        self._adding_wp = -1
         if self._vessel_id_foc not in self._waypoints_temp:
             self._initialise_wp_list(self._vessel_id_foc)
 
@@ -621,17 +623,21 @@ class Plotter():
                 dpg.add_button(label='Add',
                                callback=self._add_waypoint,
                                user_data=n_wp)
-
+            # dpg.add_button(label="Remove all waypoints",
+            #                callback=self._delete_all_wps)
+            dpg.add_separator()
             dpg.add_button(label="Resume",
-                           callback=self._delete_all_wps)
+                           callback=self._resume_mission)
 
     def _resume_mission(self, sender, app_data):
         self._delete_all_wps()
+        self._send_waypoints = True
 
     def _delete_all_wps(self):
         self._waypoints_temp[self._vessel_id_foc] = []
-        self._send_waypoints = True
+        self._waypoints_changed = True
         self._close_wp_menu()
+        self._update_waypoint_plot()
 
     def _key_press_callback(self, sender, app_data):
         if dpg.is_key_pressed(dpg.mvKey_Spacebar):
