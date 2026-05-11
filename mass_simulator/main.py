@@ -16,7 +16,8 @@ class MASSsim():
                  mode: str = "manual",
                  plotter: bool = True,
                  log_dir: str = "logs/",
-                 log_file: int | str = ""):
+                 log_file: int | str = "",
+                 playspeed: int = 10):
 
         self.termination_reason = ""
 
@@ -24,25 +25,36 @@ class MASSsim():
 
         if mode == "manual":
             self._start_manual(scenario=scenario,
-                               log_dir=log_dir)
+                               log_dir=log_dir,
+                               playspeed=playspeed)
         elif mode == "test":
             self._start_test(scenario=scenario,
                              log_dir=log_dir,
-                             plotter=plotter)
+                             plotter=plotter,
+                             playspeed=playspeed)
         elif mode == "playback":
-            self._start_playback(log_file=log_file)
+            self._start_playback(log_file=log_file,
+                                 playspeed=playspeed)
 
-    def _start_manual(self, scenario, log_dir):
+    def _start_manual(self,
+                      scenario,
+                      log_dir,
+                      playspeed):
         conf = self._get_scenario(scenario=scenario)
         scen_conf, params, self._vessels, xy_lim = self._setup_scene(conf)
         self._world = World(params['t_step'])
         self._logger = Logger(log_dir, scen_conf)
         self._plotter = Plotter(self._vessels,
                                 xy_lim,
-                                control=True)
+                                control=True,
+                                playspeed=playspeed)
         self._manual_plotter_loop()
 
-    def _start_test(self, scenario, log_dir, plotter):
+    def _start_test(self,
+                    scenario,
+                    log_dir,
+                    plotter,
+                    playspeed):
         conf = self._get_scenario(scenario=scenario)
         scen_conf, params, self._vessels, xy_lim = self._setup_scene(conf)
         self._world = World(params['t_step'])
@@ -50,10 +62,12 @@ class MASSsim():
         if plotter:
             self._plotter = Plotter(self._vessels,
                                     xy_lim,
-                                    control=True)
+                                    control=True,
+                                    playspeed=playspeed)
 
     def _start_playback(self,
-                        log_file):
+                        log_file,
+                        playspeed):
         log_path = self._get_log_path(log_file=log_file)
         self._playback = Playback(log_file=log_path)
         conf = self._playback.get_setup()
@@ -61,7 +75,8 @@ class MASSsim():
         self._world = World(params['t_step'])
         self._plotter = Plotter(self._vessels,
                                 xy_lim,
-                                control=True)
+                                control=True,
+                                playspeed=playspeed)
         self._plotter.add_time_scrubber(self._playback.t_max)
         self._playback_plotter_loop()
 
@@ -200,10 +215,14 @@ class MASSsim():
         return obs_dict, self.lb.log[self.lb.n-1]
 
     def send_waypoint_logic(self, waypoint_logic):
-        vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
-                                                              vessels=self._vessels)
-        self.set_waypoints(vessel_id=vessel,
-                           waypoints_utm=[wp_xy])
+        if "add_waypoint" in "/".join(waypoint_logic):
+            vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
+                                                                  vessels=self._vessels)
+            self.set_waypoints(vessel_id=vessel,
+                               waypoints_utm=[wp_xy])
+        else:
+            vessel_id = waypoint_logic[0].strip("resume()")
+            self._vessels[vessel_id].resume_mission()
 
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)

@@ -51,6 +51,8 @@ class Agent():
 
     def next_step(self,
                   t_step):
+        if len(self.waypoints) == 1:
+            self.resume_mission()
         self.xy = [self.xy[0]+self.xy_step[0]*t_step,
                    self.xy[1]+self.xy_step[1]*t_step]
         self.xy_hist.append(self.xy)
@@ -74,6 +76,9 @@ class Agent():
         course_rad = np.deg2rad(self.course_deg)
         self.xy_step = [self.speed_mps*np.sin(course_rad),
                         self.speed_mps*np.cos(course_rad)]
+
+    def resume_mission(self):
+        self.update_waypoints([self.goal_waypoint])
 
     def update_waypoints(self,
                          waypoints):

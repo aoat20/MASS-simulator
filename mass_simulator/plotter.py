@@ -11,10 +11,11 @@ class Plotter():
     def __init__(self,
                  vessels,
                  xy_lims,
-                 control=True):
+                 control=True,
+                 playspeed=10):
 
         self.play = True
-        self.playspeed = 10
+        self.playspeed = playspeed
         self.tic = time()
         self.t_n = 0
         self._adjust_speed = False
@@ -597,9 +598,10 @@ class Plotter():
                         no_collapse=True,
                         no_move=True,
                         tag="wp_menu_tag"):
-            dpg.add_button(label='Send',
-                           callback=self._send_wps_cb,
-                           user_data=mouse_pos2)
+            if self._waypoints_changed:
+                dpg.add_button(label='Send',
+                               callback=self._send_wps_cb,
+                               user_data=mouse_pos2)
 
             wp_bool, wp_close = self._is_existing_wp(mouse_pos)
             wp_line_bool, wp_n = self._is_on_current_wps(mouse_pos)
@@ -619,6 +621,17 @@ class Plotter():
                 dpg.add_button(label='Add',
                                callback=self._add_waypoint,
                                user_data=n_wp)
+
+            dpg.add_button(label="Resume",
+                           callback=self._delete_all_wps)
+
+    def _resume_mission(self, sender, app_data):
+        self._delete_all_wps()
+
+    def _delete_all_wps(self):
+        self._waypoints_temp[self._vessel_id_foc] = []
+        self._send_waypoints = True
+        self._close_wp_menu()
 
     def _key_press_callback(self, sender, app_data):
         if dpg.is_key_pressed(dpg.mvKey_Spacebar):
@@ -806,12 +819,13 @@ class Plotter():
         self._update_seg_annot(mouse_pos=mouse_pos)
         if self._waypoints_temp != {}:
             for key, value in self._waypoints_temp.items():
-                # Set the first value to the current position so it tracks the boat
-                xy_hist = dpg.get_value(f"tag_hist_{key}")
-                xy_curr = [xy_hist[0][-1],
-                           xy_hist[1][-1]]
-                value[0] = xy_curr
-                self._update_waypoint_plot()
+                if value != []:
+                    # Set the first value to the current position so it tracks the boat
+                    xy_hist = dpg.get_value(f"tag_hist_{key}")
+                    xy_curr = [xy_hist[0][-1],
+                               xy_hist[1][-1]]
+                    value[0] = xy_curr
+                    self._update_waypoint_plot()
 
         if self._changing_wp != -1:
             wp_n = self._changing_wp
