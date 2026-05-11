@@ -17,7 +17,8 @@ class MASSsim():
                  plotter: bool = True,
                  log_dir: str = "logs/",
                  log_file: int | str = "",
-                 playspeed: int = 10):
+                 playspeed: int = 10,
+                 debug_logic: bool = False):
 
         self.termination_reason = ""
 
@@ -34,7 +35,8 @@ class MASSsim():
                              playspeed=playspeed)
         elif mode == "playback":
             self._start_playback(log_file=log_file,
-                                 playspeed=playspeed)
+                                 playspeed=playspeed,
+                                 debug_logic=debug_logic)
 
     def _start_manual(self,
                       scenario,
@@ -67,7 +69,8 @@ class MASSsim():
 
     def _start_playback(self,
                         log_file,
-                        playspeed):
+                        playspeed,
+                        debug_logic=False):
         log_path = self._get_log_path(log_file=log_file)
         self._playback = Playback(log_file=log_path)
         conf = self._playback.get_setup()
@@ -78,7 +81,7 @@ class MASSsim():
                                 control=True,
                                 playspeed=playspeed)
         self._plotter.add_time_scrubber(self._playback.t_max)
-        self._playback_plotter_loop()
+        self._playback_plotter_loop(debug_logic=debug_logic)
 
     def _manual_plotter_loop(self):
         while self._is_plotter_running():
@@ -94,7 +97,8 @@ class MASSsim():
         if hasattr(self, "_logger"):
             self.save_episode()
 
-    def _playback_plotter_loop(self):
+    def _playback_plotter_loop(self,
+                               debug_logic=False):
         while self._is_plotter_running():
             # do stuff
             play = self._plotter.play
@@ -112,6 +116,9 @@ class MASSsim():
                 self._playback_n_step()
 
             self._update_plotter()
+            if debug_logic:
+                _, logic_obs = self.get_logic_obs()
+                print(logic_obs)
 
     def _is_plotter_running(self):
         if self._plotter.is_plotter_running():
@@ -176,9 +183,8 @@ class MASSsim():
                 self._logger.log_vessel(v)
 
         # Get observations and convert into discrete logic
-        obs, _ = self.get_obs()
-        self.lb.add_obs_to_log(obs)
-        logic_obs = self.lb.next_step()
+        obs, logic_obs = self.get_logic_obs()
+
         return obs, logic_obs
 
     def _playback_n_step(self):
@@ -207,6 +213,13 @@ class MASSsim():
         if self.is_episode_running():
             obs, logic_obs = self._manualtest_next_step()
             return obs, logic_obs
+
+    def get_logic_obs(self):
+        obs, _ = self.get_obs()
+        self.lb.add_obs_to_log(obs)
+        logic_obs = self.lb.next_step()
+
+        return obs, logic_obs
 
     def get_obs(self):
         obs_dict = {}
