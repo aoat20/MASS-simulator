@@ -27,30 +27,68 @@ class logic_bridge():
             log_entry = f"speed({v_id}, {speed_kn})"
 
         if "waypoint" in kwargs:
-            v_id = kwargs['vessel']
-            ref_id = kwargs['reference']
-            ref_xy = kwargs['ref_xy']
+            v1_id = kwargs['v1_id']
+            v2_id = kwargs['v2_id']
+            v1_xy = kwargs['vessel1'].xy
+            v2_xy = kwargs['vessel2'].xy
+            v1_course = kwargs['vessel1'].course_deg
+            v2_course = kwargs['vessel2'].course_deg
+            v2_course_rad = np.deg2rad(v2_course)
+            v1_speed_mps = kwargs['vessel1'].speed_mps
+            v2_speed_mps = kwargs['vessel2'].speed_mps
+            goal_wp = kwargs['vessel1'].goal_waypoint
             wp = kwargs['waypoint']
-            wp_n = kwargs['wp_n']
-            brg = general.compute_bearing(ref_xy,
-                                          wp)
-            brg_bin = self.bearing_to_segment(brg-kwargs['course_deg'])
-            d = general.compute_distance(wp,
-                                         ref_xy)
-            d_bin = self.range_to_bins(d)
-            log_entry = f"add_waypoint_bin({v_id},waypoint{wp_n},{ref_id},{brg_bin},{d_bin})"
+            # Compute DCPA and TCPA for the first leg of the diversion
+            course0_new = 90-np.rad2deg(np.atan2(wp[1]-v1_xy[1],
+                                                 wp[0]-v1_xy[0]))
+            cpa1_m, _, tcpa1_s = general.compute_cpa(v1_xy, course0_new, v1_speed_mps,
+                                                     v2_xy, v2_course, v2_speed_mps)
+            tcpa1_bin = self.tcpa_to_bin(tcpa1_s)
+            cpa1_bin = self.cpa_to_bin(cpa1_m)
+
+            # Compute DCPA and TCPA for the second leg of the diversion
+            # Distance from agent pos to wp
+            r = general.compute_distance(v1_xy, wp)
+            # Travel time to wp
+            travel_time = r/v1_speed_mps
+            # Heading from waypoint to resumption point
+            course1_new = 90-np.atan2(goal_wp[1]-wp[1],
+                                      goal_wp[0]-wp[0])
+            v2_xy_new = v2_xy + v2_speed_mps*travel_time*np.array([np.sin(v2_course_rad),
+                                                                   np.cos(v2_course_rad)])
+            cpa2_m, _, tcpa2_s = general.compute_cpa(wp, course1_new, v1_speed_mps,
+                                                     v2_xy_new, v2_course, v2_speed_mps)
+            cpa2_bin = self.cpa_to_bin(cpa2_m)
+            tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
+
+            turn_sign = np.sign(v1_course-course0_new)
+            if turn_sign == 1:
+                turn_direction = "port"
+            else:
+                turn_direction = "starboard"
+            turn_mag_bin = self.turn_magnitude_to_bin(
+                np.abs(v1_course-course0_new))
+            log_entry = f"add_waypoint({v1_id},{v2_id}," \
+                        + f"{cpa1_bin},{tcpa1_bin}," \
+                        + f"{cpa2_bin},{tcpa2_bin}," \
+                        + f"{turn_direction},{turn_mag_bin})"
 
         if "bearing_deg" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
-            segment = self.bearing_to_segment(kwargs['bearing_deg'])
-            log_entry = f"bearing({v_id1},{v_id2},{segment})"
+            sector, arc_overtaking = self.bearing_to_sector(
+                kwargs['bearing_deg'])
+            log_entry = f"sector({v_id1},{v_id2},{sector})"
+            if arc_overtaking:
+                self.log[self.n].append(log_entry)
+
+                log_entry = f"arc_overtaking({v_id2},{v_id1})"
 
         if "range_m" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             range_bin = self.range_to_bins(kwargs['range_m'])
-            log_entry = f"distance({v_id1},{v_id2},{range_bin})"
+            log_entry = f"range({v_id1},{v_id2},{range_bin})"
 
         if "tcpa_s" in kwargs:
             v_id1 = kwargs['vessel1']
@@ -63,7 +101,7 @@ class logic_bridge():
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             cpa_bin = self.cpa_to_bin(kwargs['cpa_m'])
-            log_entry = f"cpa({v_id1},{v_id2},{cpa_bin})"
+            log_entry = f"dcpa({v_id1},{v_id2},{cpa_bin})"
 
         if "action" in kwargs:
             pass
@@ -81,10 +119,10 @@ class logic_bridge():
         v_n = 0
         # Go through each vessel and add each observation
         for key1, value1 in obs['vessels'].items():
-            self.add_to_log(vessel=key1,
-                            course_deg=value1.course_deg)
-            self.add_to_log(vessel=key1,
-                            speed_kn=value1.speed_kn)
+            # self.add_to_log(vessel=key1,
+            #                 course_deg=value1.course_deg)
+            # self.add_to_log(vessel=key1,
+            #                 speed_kn=value1.speed_kn)
 
             # Go through each other vessel
             for key2, value2 in value1.other_vessels.items():
@@ -113,18 +151,11 @@ class logic_bridge():
                     n = 0
                     for wp in value1.waypoints[1:]:
                         if not np.isnan(wp[0]):
-                            self.add_to_log(vessel=key1,
-                                            reference=key1,
-                                            ref_xy=obs["vessels"][key1].xy,
-                                            waypoint=wp,
-                                            wp_n=f"{v_n}_{n}",
-                                            course_deg=obs["vessels"][key1].course_deg)
-                            self.add_to_log(vessel=key1,
-                                            reference=key2,
-                                            ref_xy=obs["vessels"][key2].xy,
-                                            waypoint=wp,
-                                            wp_n=f"{v_n}_{n}",
-                                            course_deg=obs["vessels"][key2].course_deg)
+                            self.add_to_log(v1_id=key1,
+                                            v2_id=key2,
+                                            vessel1=value1,
+                                            vessel2=value2,
+                                            waypoint=wp)
 
                         n += 1
             v_n += 1
@@ -135,12 +166,12 @@ class logic_bridge():
         return self.log[self.n-1]
 
     def range_to_bins(self, range_m):
-        # bin_sel = [r[0] for r in bin_constants.RANGE_BINS
-        #            if (range_m > r[1] and range_m < r[2])][0]
-        bin_sel = int(np.ceil(np.interp(range_m,
-                                        np.linspace(0, 182.5*50, 50),
-                                        np.arange(0, 50),
-                                        right=50)))
+        bin_sel = [r[0] for r in bin_constants.RANGE_BINS
+                   if (range_m > r[1] and range_m < r[2])][0]
+        # bin_sel = int(np.ceil(np.interp(range_m,
+        #                                 np.linspace(0, 182.5*50, 50),
+        #                                 np.arange(0, 50),
+        #                                 right=50)))
         return bin_sel
 
     def closing_or_opening(self, tcpa_s):
@@ -167,7 +198,11 @@ class logic_bridge():
         seg = self.bearing_to_segment(bearing_deg=bearing_deg)
         brg_sect = [s[0] for s in bin_constants.SECTOR
                     if seg >= s[1] and seg <= s[2]][0]
-        return brg_sect
+        if seg >= 10 and seg <= 22:
+            is_arc_overtaking = True
+        else:
+            is_arc_overtaking = False
+        return brg_sect, is_arc_overtaking
 
     def segment_to_bearing(self, segment):
         brg_upper = np.interp(segment,
@@ -176,9 +211,16 @@ class logic_bridge():
         brg_lower = (brg_upper - 11.25) % 360
         return brg_lower, brg_upper
 
+    def turn_magnitude_to_bin(self, turn_magntiude):
+        bin_sel = [r[0] for r in bin_constants.TURN_MAGNITUDES
+                   if (turn_magntiude > r[1] and turn_magntiude < r[2])][0]
+        return bin_sel
+
     def remove_duplicates(self, log):
+
+        log_init = [n for n in log[0] if "add_waypoint" not in n]
         # Remove duplicate logs until they change
-        log_tmp = [log[0]]
+        log_tmp = [log_init]
         for n in range(len(log)-1):
             log_entry = []
             # Check if each entry is in the previous timestep
@@ -190,14 +232,25 @@ class logic_bridge():
             for entry in log[n]:
                 if entry not in log[n+1] \
                         and any(x in entry for x in ["arc_overtaking"]):
-                    log_entry.append(f";{entry}")
+                    log_entry.append(f"!{entry}")
 
             # If there more than just the clock add the entry
             if len(log_entry) > 1 and any("clock" in x for x in log_entry):
                 log_tmp.append(log_entry)
             if log[n-1][1:] != [] and log[n][1:] == []:
                 log_tmp.append(log[n])
-        return log_tmp
+
+        # Remove reciprocal relationships
+        log_out = []
+        for log_entry in log_tmp:
+            log_entry_out = []
+            for n in log_entry:
+                n_comparison = [sorted(n) == sorted(n2)
+                                for n2 in log_entry_out]
+                if not any(n_comparison):
+                    log_entry_out.append(n)
+            log_out.append(log_entry_out)
+        return log_out
 
     def add_wp_area(self, xy0, course_deg, r1, r2, theta_1, theta_2):
         mg_flat = np.concatenate([[self.xy_mg[0].flatten()],
@@ -282,6 +335,11 @@ class logic_bridge():
         y_out = np.mean(self.xy_mg[1].flatten()[self.wp_area]).tolist()
 
         return v_0, [x_out, y_out]
+
+    def cpa_waypoint_logic_to_coordinates(self,
+                                          waypoint_logic: list[str],
+                                          vessels: list[agent.Agent]):
+        pass
 
     def output_to_txt(self,
                       save_loc="log.txt",

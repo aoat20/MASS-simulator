@@ -37,3 +37,8 @@ class bin_constants:
                  ["medium", 12*60, 18*60],
                  ["long", 18*60, 24*60],
                  ["very_long", 24*60, np.inf]]
+
+    TURN_MAGNITUDES = [["insubstantial", 0, 20],
+                       ["small", 20, 30],
+                       ["medium", 30, 40],
+                       ["large", 40, 180]]
