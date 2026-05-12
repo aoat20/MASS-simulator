@@ -96,14 +96,22 @@ class Agent():
     def _next_waypoint(self):
         # While not past the final waypoint
         if self.waypoint_n < len(self.waypoints):
+            # Check distance to goal waypoint
+            d_goal = compute_perp_distance(self.xy,
+                                           self.xy_hist[-2],
+                                           self.goal_waypoint)
+            if d_goal < 50:
+                self._final_waypoint_reached = True
+
             # Get distance to current waypoint
             d = compute_perp_distance(self.xy,
                                       self.xy_hist[-2],
                                       self.waypoints[self.waypoint_n])
-            if d < 50:
+            if d < 50 and not self._final_waypoint_reached:
                 self.waypoint_n += 1
                 if self.waypoint_n > len(self.waypoints)-1:
-                    self._final_waypoint_reached = True
+                    self.resume_mission()
+                    # self._final_waypoint_reached = True
 
     def update_course(self,
                       course_deg):
@@ -158,6 +166,8 @@ class Agent():
                                                        self.course_deg,
                                                        v.xy)
                 self.other_vessels[v.vessel_id] = OtherVessel(xy=v.xy,
+                                                              speed_mps=v.speed_mps,
+                                                              course_deg=v.course_deg,
                                                               cpa_m=cpa_m,
                                                               cpa_yds=cpa_yds,
                                                               tcpa_s=tcpa_s,
@@ -180,6 +190,8 @@ class Agent():
 @dataclass
 class OtherVessel:
     xy: list[float]
+    speed_mps: float
+    course_deg: float
     cpa_m: float
     cpa_yds: float
     tcpa_s: float
