@@ -157,7 +157,8 @@ class Agent():
                 bearing_deg = compute_relative_bearing(self.xy,
                                                        self.course_deg,
                                                        v.xy)
-                self.other_vessels[v.vessel_id] = OtherVessel(cpa_m=cpa_m,
+                self.other_vessels[v.vessel_id] = OtherVessel(xy=v.xy,
+                                                              cpa_m=cpa_m,
                                                               cpa_yds=cpa_yds,
                                                               tcpa_s=tcpa_s,
                                                               range_m=range_m,
@@ -178,6 +179,7 @@ class Agent():
 
 @dataclass
 class OtherVessel:
+    xy: list[float]
     cpa_m: float
     cpa_yds: float
     tcpa_s: float
