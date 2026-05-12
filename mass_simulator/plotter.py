@@ -732,7 +732,7 @@ class Plotter():
                            f"speed {speed_kn:.1f}kn \n"
                            f"course {course_deg:.1f}deg \n"
                            f"{activity}",
-                           user_data=xy+[course_deg]+[speed_mps])
+                           user_data=list(xy)+[course_deg]+[speed_mps])
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
@@ -799,13 +799,13 @@ class Plotter():
         for v in v_other:
             if v != f"v_annot_{self._vessel_id_foc}":
                 xy_course_speed2 = dpg.get_item_user_data(v)
-                _, cpa_yds, _ = compute_cpa(xy1=xy1,
-                                            course1=course_deg_new,
-                                            speed_mps1=speed_mps1,
-                                            xy2=xy_course_speed2[0:2],
-                                            course2=xy_course_speed2[2],
-                                            speed_mps2=xy_course_speed2[3])
-                label_tmp += f"{v[8:]}: {cpa_yds:.0f}yds \n"
+                _, cpa_yds, tcpa_s = compute_cpa(xy1=xy1,
+                                                 course1=course_deg_new,
+                                                 speed_mps1=speed_mps1,
+                                                 xy2=xy_course_speed2[0:2],
+                                                 course2=xy_course_speed2[2],
+                                                 speed_mps2=xy_course_speed2[3])
+                label_tmp += f"{v[8:]}: {cpa_yds:.0f}yds {tcpa_s/60:.0f}min{tcpa_s%60:.0f}s \n"
 
         dpg.configure_item(f"tag_annot_cpa",
                            default_value=[mouse_pos[0],
