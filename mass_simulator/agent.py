@@ -40,6 +40,7 @@ class Agent():
         self.waypoint_n = 1
         self.goal_waypoint = waypoints[-1]
         self._final_waypoint_reached = False
+        self.turning = False
         self.waypoints_updated = 2
 
         # compute course to first waypoint
@@ -139,16 +140,21 @@ class Agent():
                             t_step):
         course_change_tmp = t_step * \
             np.rad2deg(self.speed_mps/self.turning_radius)
-        course_diff = (self.course_deg-self._requested_course_deg) % 360
+        course_diff = np.abs(self.course_deg-self._requested_course_deg) % 360
 
-        # Don't try and change course if it's less than 3deg
-        if abs(course_diff) > course_change_tmp:
-            if ((course_diff >= 0 and course_diff <= 180) or
-                    (course_diff <= -180 and course_diff >= -360)):
+        # Don't try and change course if it's low
+        if course_diff > course_change_tmp:
+            course_diff_signed = (
+                self.course_deg-self._requested_course_deg) % 360
+            self.turning = True
+            if ((course_diff_signed >= 0 and course_diff_signed <= 180) or
+                    (course_diff_signed <= -180 and course_diff_signed >= -360)):
                 self.course_deg = self.course_deg-course_change_tmp
 
             else:
                 self.course_deg = self.course_deg+course_change_tmp
+        else:
+            self.turning = False
         self._compute_xy_step()
 
     def update_other_vessels(self,
