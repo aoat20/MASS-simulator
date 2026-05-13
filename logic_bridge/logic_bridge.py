@@ -113,35 +113,16 @@ class logic_bridge():
             self.log[self.n].append(log_entry)
 
     def add_obs_to_log(self, obs):
+        # If the vessel is turning don't add to log
+
         # Add time
         self.add_to_log(time_s=obs['time_s'])
 
         v_n = 0
         # Go through each vessel and add each observation
         for key1, value1 in obs['vessels'].items():
-            # self.add_to_log(vessel=key1,
-            #                 course_deg=value1.course_deg)
-            # self.add_to_log(vessel=key1,
-            #                 speed_kn=value1.speed_kn)
-
             # Go through each other vessel
             for key2, value2 in value1.other_vessels.items():
-                # Add bearings
-                self.add_to_log(vessel1=key1,
-                                vessel2=key2,
-                                bearing_deg=value2.bearing_deg)
-                # Add the range
-                self.add_to_log(vessel1=key1,
-                                vessel2=key2,
-                                range_m=value2.range_m)
-                # Add the cpa
-                self.add_to_log(vessel1=key1,
-                                vessel2=key2,
-                                cpa_m=value2.cpa_m)
-                # Add the tcpa
-                self.add_to_log(vessel1=key1,
-                                vessel2=key2,
-                                tcpa_s=value2.tcpa_s)
 
                 if value1.resuming_mission == True:
                     self.add_to_log(resume=True,
@@ -158,6 +139,29 @@ class logic_bridge():
                                             waypoint=wp)
 
                         n += 1
+
+                # Add bearings
+                self.add_to_log(vessel1=key1,
+                                vessel2=key2,
+                                bearing_deg=value2.bearing_deg)
+                # Add the range
+                self.add_to_log(vessel1=key1,
+                                vessel2=key2,
+                                range_m=value2.range_m)
+
+                # If either vessel is turning don't record any of the other stuff
+                if value1.turning or obs['vessels'][key2].turning:
+                    continue
+
+                # Add the cpa
+                self.add_to_log(vessel1=key1,
+                                vessel2=key2,
+                                cpa_m=value2.cpa_m)
+                # Add the tcpa
+                self.add_to_log(vessel1=key1,
+                                vessel2=key2,
+                                tcpa_s=value2.tcpa_s)
+
             v_n += 1
 
     def next_step(self):
