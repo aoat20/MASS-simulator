@@ -47,17 +47,9 @@ class logic_bridge():
             cpa1_bin = self.cpa_to_bin(cpa1_m)
 
             # Compute DCPA and TCPA for the second leg of the diversion
-            # Distance from agent pos to wp
-            r = general.compute_distance(v1_xy, wp)
-            # Travel time to wp
-            travel_time = r/v1_speed_mps
-            # Heading from waypoint to resumption point
-            course1_new = 90-np.atan2(goal_wp[1]-wp[1],
-                                      goal_wp[0]-wp[0])
-            v2_xy_new = v2_xy + v2_speed_mps*travel_time*np.array([np.sin(v2_course_rad),
-                                                                   np.cos(v2_course_rad)])
-            cpa2_m, _, tcpa2_s = general.compute_cpa(wp, course1_new, v1_speed_mps,
-                                                     v2_xy_new, v2_course, v2_speed_mps)
+            cpa2_m, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
+                                                          v2_xy, v2_course, v2_speed_mps,
+                                                          wp, goal_wp)
             cpa2_bin = self.cpa_to_bin(cpa2_m)
             tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
 

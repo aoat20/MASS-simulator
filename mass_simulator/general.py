@@ -51,6 +51,24 @@ def compute_cpa(xy1, course1, speed_mps1,
     return cpa_m, cpa_yds, tcpa_s
 
 
+def compute_future_cpas(xy1, speed_mps1,
+                        xy2, course2, speed_mps2,
+                        wp, goal_wp):
+    v2_course_rad = np.deg2rad(course2)
+    # Distance from agent pos to wp
+    r = compute_distance(xy1, wp)
+    # Travel time to wp
+    travel_time = r/speed_mps1
+    # Heading from waypoint to resumption point
+    course1_new = 90-np.atan2(goal_wp[1]-wp[1],
+                              goal_wp[0]-wp[0])
+    v2_xy_new = xy2 + speed_mps2*travel_time*np.array([np.sin(v2_course_rad),
+                                                       np.cos(v2_course_rad)])
+    cpa2_m, _, tcpa2_s = compute_cpa(wp, course1_new, speed_mps1,
+                                     v2_xy_new, course2, speed_mps2)
+    return cpa2_m, tcpa2_s
+
+
 def compute_distance(xy1,
                      xy2):
     """Compute the distance between point xy1 and xy2"""
