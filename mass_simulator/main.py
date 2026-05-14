@@ -303,8 +303,6 @@ class MASSsim():
                 speed_mps = v['speed_mps']
             else:
                 speed_mps = 0.5144*v["speed_kn"]
-            course = compute_bearing(way_points[0],
-                                     way_points[1])
 
             vessels[v['vessel']] = Agent(vessel_id=v['vessel'],
                                          xy_init=way_points[0],
@@ -314,6 +312,9 @@ class MASSsim():
                                          turning_radius=v['turning_radius'],
                                          speed_mps=speed_mps,
                                          waypoints=way_points)
+
+        for v in vessels.values():
+            v.update_other_vessels(vessels)
 
         xy_lim_tmp_np = np.array(xy_lim_tmp)
         # Get limits of travel for vessel travel
