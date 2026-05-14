@@ -64,9 +64,9 @@ def compute_future_cpas(xy1, speed_mps1,
                               goal_wp[0]-wp[0])
     v2_xy_new = xy2 + speed_mps2*travel_time*np.array([np.sin(v2_course_rad),
                                                        np.cos(v2_course_rad)])
-    cpa2_m, _, tcpa2_s = compute_cpa(wp, course1_new, speed_mps1,
-                                     v2_xy_new, course2, speed_mps2)
-    return cpa2_m, tcpa2_s
+    cpa_m, cpa_yds, tcpa_s = compute_cpa(wp, course1_new, speed_mps1,
+                                         v2_xy_new, course2, speed_mps2)
+    return cpa_m, cpa_yds, tcpa_s
 
 
 def compute_distance(xy1,
