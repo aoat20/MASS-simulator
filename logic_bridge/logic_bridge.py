@@ -47,9 +47,9 @@ class logic_bridge():
             cpa1_bin = self.cpa_to_bin(cpa1_m)
 
             # Compute DCPA and TCPA for the second leg of the diversion
-            cpa2_m, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
-                                                          v2_xy, v2_course, v2_speed_mps,
-                                                          wp, goal_wp)
+            cpa2_m, cpa_yds, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
+                                                                   v2_xy, v2_course, v2_speed_mps,
+                                                                   wp, goal_wp)
             cpa2_bin = self.cpa_to_bin(cpa2_m)
             tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
 
@@ -178,9 +178,9 @@ class logic_bridge():
                    if (tcpa_s > r[1] and tcpa_s < r[2])][0]
         return bin_sel
 
-    def cpa_to_bin(self, cpm_m):
+    def cpa_to_bin(self, cpa_m):
         bin_sel = [r[0] for r in bin_constants.CPA_BINS
-                   if (cpm_m > r[1] and cpm_m < r[2])][0]
+                   if (cpa_m > r[1] and cpa_m < r[2])][0]
         return bin_sel
 
     def bearing_to_segment(self, bearing_deg):
@@ -243,7 +243,12 @@ class logic_bridge():
             for n in log_entry:
                 n_comparison = [sorted(n) == sorted(n2)
                                 for n2 in log_entry_out]
-                if not any(n_comparison):
+                if "range" in n \
+                        or "dcpa" in n \
+                        or "tcpa" in n:
+                    if not any(n_comparison):
+                        log_entry_out.append(n)
+                else:
                     log_entry_out.append(n)
             log_out.append(log_entry_out)
         return log_out
