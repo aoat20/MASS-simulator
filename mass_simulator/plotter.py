@@ -26,6 +26,7 @@ class Plotter():
         self._changing_wp = -1
         self._adding_wp = -1
         self._waypoints_changed = False
+        self._wp_cpa_logic = False
         self._vessel_id_foc = next(iter(vessels))
         vessel_N = len(vessels)
 
@@ -178,12 +179,17 @@ class Plotter():
                                max_value=100,
                                default_value=self.playspeed,
                                callback=self.set_playspeed)
-
+            dpg.add_checkbox(label="Waypoint CPA logic",
+                             callback=self._wp_cpa_logic_set,
+                             tag="tag_wp_cpa_logic_check")
             with dpg.menu(label="Segmentation layers"):
                 for v_key in vessels:
                     dpg.add_checkbox(label=f"{v_key}",
                                      callback=self._add_seg_layers,
                                      user_data=v_key)
+
+    def _wp_cpa_logic_set(self, sender, app_data):
+        self._wp_cpa_logic = app_data
 
     def _add_seg_layers(self, sender, app_data, user_data):
         # If the tag isn't already switched, add it
@@ -642,6 +648,10 @@ class Plotter():
     def _key_press_callback(self, sender, app_data):
         if dpg.is_key_pressed(dpg.mvKey_Spacebar):
             self.set_play(not self.play)
+        if app_data == 663:
+            dpg.set_value("tag_wp_cpa_logic_check",
+                          not self._wp_cpa_logic)
+            self._wp_cpa_logic = not self._wp_cpa_logic
 
     def _initialise_wp_list(self, vessel_id):
         wp = dpg.get_value(f"waypoint_plot_{vessel_id}")
@@ -732,7 +742,7 @@ class Plotter():
                            f"speed {speed_kn:.1f}kn \n"
                            f"course {course_deg:.1f}deg \n"
                            f"{activity}",
-                           user_data=list(xy)+[course_deg]+[speed_mps])
+                           user_data=list(xy)+[course_deg]+[speed_mps]+[vessel.goal_waypoint])
         # Update waypoints if they've changed
         wps = [list(wp) for wp in list(zip(*waypoints))]
         dpg.set_item_user_data(f"waypoint_plot_{vessel_id}",
@@ -789,6 +799,7 @@ class Plotter():
             f"v_annot_{self._vessel_id_foc}")
         xy1 = xy_course_speed[0:2]
         speed_mps1 = xy_course_speed[3]
+        goal_wp = xy_course_speed[4]
         course_deg_new = 90 - np.atan2(mouse_pos[1]-xy1[1],
                                        mouse_pos[0]-xy1[0])*180/np.pi
 
@@ -799,13 +810,33 @@ class Plotter():
         for v in v_other:
             if v != f"v_annot_{self._vessel_id_foc}":
                 xy_course_speed2 = dpg.get_item_user_data(v)
-                _, cpa_yds, tcpa_s = compute_cpa(xy1=xy1,
-                                                 course1=course_deg_new,
-                                                 speed_mps1=speed_mps1,
-                                                 xy2=xy_course_speed2[0:2],
-                                                 course2=xy_course_speed2[2],
-                                                 speed_mps2=xy_course_speed2[3])
-                label_tmp += f"{v[8:]}: {cpa_yds:.0f}yds {tcpa_s/60:.0f}min{tcpa_s%60:.0f}s \n"
+                xy2 = xy_course_speed2[0:2]
+                course2 = xy_course_speed2[2]
+                speed2 = xy_course_speed2[3]
+                cpa_m, cpa_yds, tcpa_s = compute_cpa(xy1=xy1,
+                                                     course1=course_deg_new,
+                                                     speed_mps1=speed_mps1,
+                                                     xy2=xy2,
+                                                     course2=course2,
+                                                     speed_mps2=speed2)
+                cpa2_m, cpa2_yds, tcpa2_s = compute_future_cpas(xy1=xy1,
+                                                                speed_mps1=speed_mps1,
+                                                                xy2=xy2,
+                                                                course2=course2,
+                                                                speed_mps2=speed2,
+                                                                wp=mouse_pos,
+                                                                goal_wp=goal_wp)
+
+                if self._wp_cpa_logic:
+                    label_tmp += f"{v[8:]}: {logic_bridge.cpa_to_bin(self,cpa_m=cpa_m)} " \
+                        + f"{logic_bridge.tcpa_to_bin(self,tcpa_s=tcpa_s)} \n" \
+                        + f"      resume: {logic_bridge.cpa_to_bin(self,cpa_m=cpa2_m)} "\
+                        + f"{logic_bridge.tcpa_to_bin(self,tcpa_s=tcpa2_s)} \n"
+                else:
+                    label_tmp += f"{v[8:]}: {cpa_yds:.0f}yds " \
+                        + f"{tcpa_s/60:.0f}min{tcpa_s%60:.0f}s \n" \
+                        + f"      resume: {cpa2_yds:.0f}yds "\
+                        + f"{tcpa2_s/60:.0f}min{tcpa2_s%60:.0f}s \n"
 
         dpg.configure_item(f"tag_annot_cpa",
                            default_value=[mouse_pos[0],
