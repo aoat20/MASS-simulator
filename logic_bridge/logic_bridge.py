@@ -33,7 +33,6 @@ class logic_bridge():
             v2_xy = kwargs['vessel2'].xy
             v1_course = kwargs['vessel1'].course_deg
             v2_course = kwargs['vessel2'].course_deg
-            v2_course_rad = np.deg2rad(v2_course)
             v1_speed_mps = kwargs['vessel1'].speed_mps
             v2_speed_mps = kwargs['vessel2'].speed_mps
             goal_wp = kwargs['vessel1'].goal_waypoint
@@ -183,6 +182,16 @@ class logic_bridge():
                    if (cpa_m > r[1] and cpa_m < r[2])][0]
         return bin_sel
 
+    def bin_to_tcpa(self, tcpa_bin):
+        tcpa_bin_lims = [x[1:3] for x in bin_constants.TCPA_BINS
+                         if x[0] == tcpa_bin][0]
+        return tcpa_bin_lims
+
+    def bin_to_dcpa(self, dcpa_bin):
+        dcpa_bin_lims = [x[1:3] for x in bin_constants.CPA_BINS
+                         if x[0] == dcpa_bin][0]
+        return dcpa_bin_lims
+
     def bearing_to_segment(self, bearing_deg):
         brg_tmp = (bearing_deg) % 360
         return int(np.ceil(np.interp(brg_tmp,
@@ -229,7 +238,7 @@ class logic_bridge():
             for entry in log[n]:
                 if entry not in log[n+1] \
                         and any(x in entry for x in ["arc_overtaking"]):
-                    log_entry.append(f"!{entry}")
+                    log_entry.append(f"not({entry})")
 
             # If there more than just the clock add the entry
             if len(log_entry) > 1 and any("clock" in x for x in log_entry):
@@ -254,11 +263,10 @@ class logic_bridge():
             log_out.append(log_entry_out)
         return log_out
 
-    def add_wp_area(self, xy0, course_deg, r1, r2, theta_1, theta_2):
+    def add_wp_area_range_brg(self, xy0, course_deg, r1, r2, theta_1, theta_2):
         mg_flat = np.concatenate([[self.xy_mg[0].flatten()],
                                  [self.xy_mg[1].flatten()]],
                                  axis=0)
-        xy0_np = np.array(xy0).reshape(2, 1)
 
         x_diff = xy0[0]-mg_flat[0, :]
         y_diff = xy0[1]-mg_flat[1, :]
@@ -276,67 +284,154 @@ class logic_bridge():
 
         area_mask = d_sect & th_sect
 
+        return area_mask
+
+    def add_wp_area_cpa(self,
+                        xy_mg,
+                        dcpa_bin1,
+                        tcpa_bin1,
+                        dcpa_bin2,
+                        tcpa_bin2,
+                        vessel: agent.Agent,
+                        v2_id):
+
+        # Get the minimum allowable dcpa and tcpa for diversion leg and resume leg
+        dcpa1_lim = self.bin_to_dcpa(dcpa_bin=dcpa_bin1)
+        tcpa1_lim = self.bin_to_tcpa(tcpa_bin=tcpa_bin1)
+        dcpa2_lim = self.bin_to_dcpa(dcpa_bin=dcpa_bin2)
+        tcpa2_lim = self.bin_to_tcpa(tcpa_bin=tcpa_bin2)
+
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        xy1 = vessel.xy
+        speed1 = vessel.speed_mps
+        xy2 = vessel.other_vessels[v2_id].xy
+        course2 = vessel.other_vessels[v2_id].course_deg
+        speed2 = vessel.other_vessels[v2_id].speed_mps
+        goal_wp = vessel.goal_waypoint
+
+        mask_out = []
+        for wp in mg_flat.T:
+            course1 = general.compute_bearing(xy1,
+                                              wp)
+
+            dcpa1_m, _, tcpa1_s = general.compute_cpa(xy1=xy1,
+                                                      course1=course1,
+                                                      speed_mps1=speed1,
+                                                      xy2=xy2,
+                                                      course2=course2,
+                                                      speed_mps2=speed2)
+            dcpa2_m, _, tcpa2_s = general.compute_future_cpas(xy1=xy1,
+                                                              speed_mps1=speed1,
+                                                              xy2=xy2,
+                                                              course2=course2,
+                                                              speed_mps2=speed2,
+                                                              wp=wp,
+                                                              goal_wp=goal_wp)
+            mask_out.append(dcpa1_m > dcpa1_lim[0]
+                            and (tcpa1_s > tcpa1_lim[0] or tcpa1_s <= 0)
+                            and dcpa2_m > dcpa2_lim[0]
+                            and (tcpa2_s > tcpa2_lim[0] or tcpa2_s <= 0))
+        return mask_out
+
+    def add_wp_area_turn(self,
+                         xy_mg,
+                         xy0,
+                         course_deg,
+                         turn_dir,
+                         turn_mag):
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                 [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        x_diff = xy0[0]-mg_flat[0, :]
+        y_diff = xy0[1]-mg_flat[1, :]
+
+        theta_tmp = (
+            np.array(np.rad2deg(np.atan2(x_diff, y_diff))-course_deg)) % 360
+        if turn_dir == "port":
+            dir_mask = (theta_tmp >= 180) & (theta_tmp < 360)
+        elif turn_dir == "starboard":
+            dir_mask = (theta_tmp >= 0) & (theta_tmp < 180)
+
+        mag_min = [x[1:3] for x in bin_constants.TURN_MAGNITUDES
+                   if x[0] == turn_mag][0]
+        mag_mask = np.abs(theta_tmp-180) > mag_min[0]
+
+        # Combine masks
+        mask_out = dir_mask * mag_mask
+
         # plt.figure
-        # plt.imshow(theta_tmp.reshape(self.xy_mg[0].shape),
-        #            extent=[np.min(self.xy_mg[0]), np.max(self.xy_mg[0]),
-        #                    np.min(self.xy_mg[1]), np.max(self.xy_mg[1])],
+        # plt.imshow(mag_mask.reshape(xy_mg[0].shape),
+        #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+        #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
         #            origin='lower')
         # plt.scatter(xy0[0], xy0[1])
         # plt.show()
-        self.wp_area = self.wp_area & area_mask
+
+        return mask_out
+
+    def _setup_blank_wp_area(self,
+                             xy_list,
+                             lim_span=10000,
+                             res=100):
+        # Compute xy_lims
+        xy_min = np.min(np.array(xy_list), 0)
+        xy_max = np.max(np.array(xy_list), 0)
+        xy_lims = [xy_min[0]-lim_span, xy_max[0]+lim_span,
+                   xy_min[1]-lim_span, xy_max[1]+lim_span]
+
+        # Set up the space
+        xy_mg = np.meshgrid(np.arange(xy_lims[0], xy_lims[1], res),
+                            np.arange(xy_lims[2], xy_lims[3], res))
+        wp_area = np.ones(xy_mg[0].flatten().shape, dtype=bool)
+        return wp_area, xy_mg
 
     def waypoint_logic_to_coordinates(self,
                                       waypoint_logic: list,
                                       vessels: list[agent.Agent]):
 
-        # Compute xy_lims
-        lim_span = 10000
-        xy = []
-        for v in vessels.values():
-            xy.append(v.xy)
-        xy_min = np.min(np.array(xy), 0)
-        xy_max = np.max(np.array(xy), 0)
-        xy_lims = [xy_min[0]-lim_span, xy_max[0]+lim_span,
-                   xy_min[1]-lim_span, xy_max[1]+lim_span]
-
-        # Set up the space
-        res = 100
-        self.xy_mg = np.meshgrid(np.arange(xy_lims[0], xy_lims[1], res),
-                                 np.arange(xy_lims[2], xy_lims[3], res))
-        self.wp_area = np.ones(self.xy_mg[0].flatten().shape, dtype=bool)
+        xy_list = [v.xy for v in vessels.values()]
+        wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
 
         wp: str
         for wp in waypoint_logic:
             wp_list = wp.strip("add_waypoint").strip("()").split(",")
-            v_0 = wp_list[0]
-            v_1 = wp_list[2]
-            v_sector = wp_list[3]
-            v_range = wp_list[4]
+            v0 = vessels[wp_list[0]]
+            v1_id = wp_list[1]
+            div_dcpa = wp_list[2]
+            div_tcpa = wp_list[3]
+            res_dcpa = wp_list[4]
+            res_tcpa = wp_list[5]
+            p_or_s = wp_list[6]
+            turn_mag = wp_list[7]
 
-            sector_lims = [x[1:] for x in bin_constants.SECTOR
-                           if x[0] == v_sector][0]
-            s_1_1, s_1_2 = self.segment_to_bearing(sector_lims[0])
-            s_2_1, s_2_2 = self.segment_to_bearing(sector_lims[1])
+            cpa_mask = self.add_wp_area_cpa(xy_mg=xy_mg,
+                                            dcpa_bin1=div_dcpa,
+                                            tcpa_bin1=div_tcpa,
+                                            dcpa_bin2=res_dcpa,
+                                            tcpa_bin2=res_tcpa,
+                                            vessel=v0,
+                                            v2_id=v1_id)
+            turn_mask = self.add_wp_area_turn(xy_mg=xy_mg,
+                                              xy0=v0.xy,
+                                              course_deg=v0.course_deg,
+                                              turn_dir=p_or_s,
+                                              turn_mag=turn_mag)
+            wp_area = wp_area & cpa_mask & turn_mask
 
-            range_lims = [x[1:] for x in bin_constants.RANGE_BINS
-                          if x[0] == v_range][0]
-
-            self.add_wp_area(vessels[v_1].xy,
-                             vessels[v_1].course_deg,
-                             range_lims[0],
-                             range_lims[1],
-                             s_1_1,
-                             s_2_2)
-        # plt.figure
-        # plt.imshow(self.wp_area.reshape(self.xy_mg[0].shape),
-        #            extent=[np.min(self.xy_mg[0]), np.max(self.xy_mg[0]),
-        #                    np.min(self.xy_mg[1]), np.max(self.xy_mg[1])],
-        #            origin='lower')
-        # plt.show()
-        x_out = np.mean(self.xy_mg[0].flatten()[self.wp_area]).tolist()
-        y_out = np.mean(self.xy_mg[1].flatten()[self.wp_area]).tolist()
-
-        return v_0, [x_out, y_out]
+        # get the closest allowable waypoint to the goal
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+        mg_flat_wp_area = mg_flat[:, wp_area]
+        distances = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.goal_waypoint,
+                                                                [2, 1]), axis=0)
+        min_i = np.argmin(distances)
+        xy_out = mg_flat_wp_area[:, min_i]
+        return v0.vessel_id, xy_out.tolist()
 
     def cpa_waypoint_logic_to_coordinates(self,
                                           waypoint_logic: list[str],

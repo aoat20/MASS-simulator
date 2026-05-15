@@ -27,7 +27,7 @@ class bin_constants:
 
     CPA_BINS = [["very_close", 0, 0.1*1852],
                 ["close", 0.1*1852, 0.25*1852],
-                ["unsafe", 0.25*1852, 0.5*1852],
+                ["near", 0.25*1852, 0.5*1852],
                 ["marginal", 0.5*1852, 1*1852],
                 ["safe", 1*1852, np.inf]]
 
