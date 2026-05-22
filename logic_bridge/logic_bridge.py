@@ -52,17 +52,21 @@ class logic_bridge():
             cpa2_bin = self.cpa_to_bin(cpa2_m)
             tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
 
-            turn_sign = np.sign(v1_course-course0_new)
-            if turn_sign == 1:
-                turn_direction = "port"
-            else:
-                turn_direction = "starboard"
+            cpa_side, cpa_end = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
+                                                             xy1=v1_xy,
+                                                             course1=v1_course,
+                                                             speed_mps1=v1_speed_mps,
+                                                             xy2=v2_xy,
+                                                             course2=v2_course,
+                                                             speed_mps2=v2_speed_mps)
+
             turn_mag_bin = self.turn_magnitude_to_bin(
                 np.abs(v1_course-course0_new))
             log_entry = f"add_waypoint({v1_id},{v2_id}," \
                         + f"{cpa1_bin},{tcpa1_bin}," \
                         + f"{cpa2_bin},{tcpa2_bin}," \
-                        + f"{turn_direction},{turn_mag_bin})"
+                        + f"{cpa_side},{cpa_end}," \
+                        + f"{turn_mag_bin})"
 
         if "bearing_deg" in kwargs:
             v_id1 = kwargs['vessel1']
@@ -293,7 +297,9 @@ class logic_bridge():
                         dcpa_bin2,
                         tcpa_bin2,
                         vessel: agent.Agent,
-                        v2_id):
+                        v2_id,
+                        cpa_side,
+                        cpa_end):
 
         # Get the minimum allowable dcpa and tcpa for diversion leg and resume leg
         dcpa1_lim = self.bin_to_dcpa(dcpa_bin=dcpa_bin1)
@@ -313,6 +319,7 @@ class logic_bridge():
         goal_wp = vessel.goal_waypoint
 
         mask_out = []
+        cpa_side_end_mask = []
         for wp in mg_flat.T:
             course1 = general.compute_bearing(xy1,
                                               wp)
@@ -334,16 +341,25 @@ class logic_bridge():
                             and (tcpa1_s > tcpa1_lim[0] or tcpa1_s <= 0)
                             and dcpa2_m > dcpa2_lim[0]
                             and (tcpa2_s > tcpa2_lim[0] or tcpa2_s <= 0))
-        return mask_out
+            cpa_side_tmp, cpa_end_tmp = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
+                                                                     xy1=xy1,
+                                                                     course1=course1,
+                                                                     speed_mps1=speed1,
+                                                                     xy2=xy2,
+                                                                     course2=course2,
+                                                                     speed_mps2=speed2)
+
+            cpa_side_end_mask.append((cpa_side == cpa_side_tmp or cpa_side == '')
+                                     and (cpa_end == cpa_end_tmp or cpa_end == ''))
+        return mask_out, cpa_side_end_mask
 
     def add_wp_area_turn(self,
                          xy_mg,
                          xy0,
                          course_deg,
-                         turn_dir,
                          turn_mag):
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
-                                 [xy_mg[1].flatten()]],
+                                  [xy_mg[1].flatten()]],
                                  axis=0)
 
         x_diff = mg_flat[0, :]-xy0[0]
@@ -352,19 +368,10 @@ class logic_bridge():
         theta_tmp = (
             np.array(90-np.rad2deg(np.atan2(y_diff, x_diff))-course_deg)) % 360
 
-        if turn_dir == "port":
-            dir_mask = (theta_tmp >= 180) & (theta_tmp < 360)
-        elif turn_dir == "starboard":
-            dir_mask = (theta_tmp >= 0) & (theta_tmp < 180)
-
         mag_min = [x[1:3] for x in bin_constants.TURN_MAGNITUDES
                    if x[0] == turn_mag][0]
 
-        mag_mask = np.abs((theta_tmp+180) % 360 - 180) > mag_min[0]
-
-        # Combine masks
-        mask_out = dir_mask * mag_mask
-
+        mask_out = np.abs((theta_tmp+180) % 360 - 180) > mag_min[0]
         return mask_out
 
     def _setup_blank_wp_area(self,
@@ -399,44 +406,45 @@ class logic_bridge():
             div_tcpa = wp_list[3]
             res_dcpa = wp_list[4]
             res_tcpa = wp_list[5]
-            p_or_s = wp_list[6]
-            turn_mag = wp_list[7]
+            cpa_side = wp_list[6]
+            cpa_end = wp_list[7]
+            turn_mag = wp_list[8]
+            cpa_mask, side_end_mask = self.add_wp_area_cpa(xy_mg=xy_mg,
+                                                           dcpa_bin1=div_dcpa,
+                                                           tcpa_bin1=div_tcpa,
+                                                           dcpa_bin2=res_dcpa,
+                                                           tcpa_bin2=res_tcpa,
+                                                           vessel=v0,
+                                                           v2_id=v1_id,
+                                                           cpa_side=cpa_side,
+                                                           cpa_end=cpa_end)
+            turn_mask = self.add_wp_area_turn(xy_mg=xy_mg,
+                                              xy0=v0.xy,
+                                              course_deg=v0.course_deg,
+                                              turn_mag=turn_mag)
 
-            cpa_mask = self.add_wp_area_cpa(xy_mg=xy_mg,
-                                            dcpa_bin1=div_dcpa,
-                                            tcpa_bin1=div_tcpa,
-                                            dcpa_bin2=res_dcpa,
-                                            tcpa_bin2=res_tcpa,
-                                            vessel=v0,
-                                            v2_id=v1_id)
             # plt.figure
+            # plt.subplot(311)
             # plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
             #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
             #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
             #            origin='lower')
             # plt.scatter(v0.xy[0], v0.xy[1])
-            # plt.show()
-            turn_mask = self.add_wp_area_turn(xy_mg=xy_mg,
-                                              xy0=v0.xy,
-                                              course_deg=v0.course_deg,
-                                              turn_dir=p_or_s,
-                                              turn_mag=turn_mag)
-            # plt.figure
-            # plt.imshow(turn_mask.reshape(xy_mg[0].shape),
+
+            # plt.subplot(312)
+            # plt.imshow(np.array(side_end_mask).reshape(xy_mg[0].shape),
             #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
             #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
             #            origin='lower')
             # plt.scatter(v0.xy[0], v0.xy[1])
-            # plt.show()
-            wp_area = wp_area & cpa_mask & turn_mask
+            # plt.subplot(313)
+            # plt.imshow(np.array(turn_mask).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
 
-        # plt.figure
-        # plt.imshow(wp_area.reshape(xy_mg[0].shape),
-        #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-        #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
-        #            origin='lower')
-        # plt.scatter(v0.xy[0], v0.xy[1])
-        # plt.show()
+            wp_area = wp_area & cpa_mask & turn_mask & side_end_mask
 
         # get the closest allowable waypoint to the goal
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
@@ -445,14 +453,17 @@ class logic_bridge():
         mg_flat_wp_area = mg_flat[:, wp_area]
         distances = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.goal_waypoint,
                                                                 [2, 1]), axis=0)
-        min_i = np.argmin(distances)
-        xy_out = mg_flat_wp_area[:, min_i]
-        return v0.vessel_id, xy_out.tolist()
 
-    def cpa_waypoint_logic_to_coordinates(self,
-                                          waypoint_logic: list[str],
-                                          vessels: list[agent.Agent]):
-        pass
+        if len(distances) != 0:
+            min_i = np.argmin(distances)
+            xy_out = mg_flat_wp_area[:, min_i].tolist()
+        else:
+            xy_out = []
+            print("##################################################################\n"
+                  + "################ WARNING! No valid wp location. ##################\n"
+                  + "##################################################################")
+
+        return v0.vessel_id, xy_out
 
     def output_to_txt(self,
                       save_loc="log.txt",

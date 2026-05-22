@@ -231,8 +231,9 @@ class MASSsim():
         if "add_waypoint" in "/".join(waypoint_logic):
             vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
                                                                   vessels=self._vessels)
-            self.set_waypoints(vessel_id=vessel,
-                               waypoints_utm=[wp_xy])
+            if len(wp_xy) != 0:
+                self.set_waypoints(vessel_id=vessel,
+                                   waypoints_utm=[wp_xy])
         else:
             vessel_id = waypoint_logic[0].strip("resume()")
             self._vessels[vessel_id].resume_mission()

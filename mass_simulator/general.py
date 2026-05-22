@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import griddata
+import math
 
 
 def m_to_yds(m):
@@ -48,7 +49,21 @@ def compute_cpa(xy1, course1, speed_mps1,
     cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
     cpa_yds = m_to_yds(cpa_m)
     tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
+
     return cpa_m, cpa_yds, tcpa_s
+
+
+def compute_vessel_xy_cpa(tcpa_s,
+                          xy1, course1, speed_mps1,
+                          xy2, course2, speed_mps2):
+    # Compute the vessel locations at the CPA
+    course1_rad = np.deg2rad(course1)
+    xy1_cpa = xy1 + speed_mps1*tcpa_s*np.array([np.sin(course1_rad),
+                                                np.cos(course1_rad)])
+    course2_rad = np.deg2rad(course2)
+    xy2_cpa = xy2 + speed_mps2*tcpa_s*np.array([np.sin(course2_rad),
+                                                np.cos(course2_rad)])
+    return xy1_cpa, xy2_cpa
 
 
 def compute_future_cpas(xy1, speed_mps1,
@@ -67,6 +82,34 @@ def compute_future_cpas(xy1, speed_mps1,
     cpa_m, cpa_yds, tcpa_s = compute_cpa(wp, course1_new, speed_mps1,
                                          v2_xy_new, course2, speed_mps2)
     return cpa_m, cpa_yds, tcpa_s
+
+
+def compute_cpa_side_end(tcpa_s,
+                         xy1, course1, speed_mps1,
+                         xy2, course2, speed_mps2):
+    course1_rad = np.deg2rad(course1)
+    course2_rad = np.deg2rad(course2)
+    # Compute the xy positions at the cpa
+    xy1_cpa = xy1 + speed_mps1*tcpa_s*np.array([np.sin(course1_rad),
+                                                np.cos(course1_rad)])
+    xy2_cpa = xy2 + speed_mps2*tcpa_s*np.array([np.sin(course2_rad),
+                                                np.cos(course2_rad)])
+    # Compute bearing of wp relative to second vessel
+    x_diff = xy1_cpa[0] - xy2_cpa[0]
+    y_diff = xy1_cpa[1] - xy2_cpa[1]
+    theta = (np.array(90-np.rad2deg(np.atan2(y_diff, x_diff))-course2)) % 360
+    theta_180 = (theta+180) % 360 - 180
+    if theta_180 < 0:
+        cpa_side = "port"
+    elif theta_180 > 0:
+        cpa_side = "starboard"
+
+    if np.abs(theta_180) <= 90:
+        cpa_end = "forward"
+    elif np.abs(theta_180) <= 180:
+        cpa_end = "aft"
+
+    return cpa_side, cpa_end
 
 
 def compute_distance(xy1,
@@ -166,3 +209,125 @@ def compute_interp_depth_map(depth_points):
     depth_map_norm_fl = np.flipud(depth_map_norm)
 
     return depth_map_norm_fl, p_min, p_max
+
+
+def solve_heading_for_desired_cpa(
+    x1, y1, speed1,
+    x2, y2, speed2, heading2_deg,
+    desired_cpa,
+    tolerance=1e-3
+):
+    """
+    Solve for Vessel 1 headings that produce a desired CPA.
+
+    Marine headings:
+        0° = North
+        90° = East
+        clockwise positive
+
+    Returns:
+        list of headings in degrees
+    """
+
+    # ------------------------------------------------------------
+    # Convert marine heading to math coordinates
+    # ------------------------------------------------------------
+    def heading_to_velocity(speed, heading_deg):
+
+        theta = math.radians(90.0 - heading_deg)
+
+        vx = speed * math.cos(theta)
+        vy = speed * math.sin(theta)
+
+        return vx, vy
+
+    # ------------------------------------------------------------
+    # Compute CPA for a candidate heading
+    # ------------------------------------------------------------
+    def compute_cpa(heading1_deg):
+
+        v1x, v1y = heading_to_velocity(speed1, heading1_deg)
+        v2x, v2y = heading_to_velocity(speed2, heading2_deg)
+
+        # Relative position
+        rx = x2 - x1
+        ry = y2 - y1
+
+        # Relative velocity
+        vrx = v2x - v1x
+        vry = v2y - v1y
+
+        vr2 = vrx**2 + vry**2
+
+        # Same velocity -> constant separation
+        if vr2 < 1e-12:
+            return math.hypot(rx, ry)
+
+        # Time to CPA
+        tcpa = -(rx * vrx + ry * vry) / vr2
+
+        # Closest point
+        cx = rx + vrx * tcpa
+        cy = ry + vry * tcpa
+
+        return math.hypot(cx, cy)
+
+    # ------------------------------------------------------------
+    # Search all headings
+    # ------------------------------------------------------------
+    headings = []
+
+    scan = np.linspace(0, 360, 3601)
+
+    errors = []
+
+    for h in scan:
+
+        cpa = compute_cpa(h)
+
+        errors.append(cpa - desired_cpa)
+
+    # Detect zero crossings
+    for i in range(len(scan) - 1):
+
+        e1 = errors[i]
+        e2 = errors[i + 1]
+
+        if abs(e1) < tolerance:
+            headings.append(scan[i])
+
+        elif e1 * e2 < 0:
+
+            # Bisection refinement
+            lo = scan[i]
+            hi = scan[i + 1]
+
+            for _ in range(40):
+
+                mid = 0.5 * (lo + hi)
+
+                emid = compute_cpa(mid) - desired_cpa
+
+                if abs(emid) < tolerance:
+                    break
+
+                if e1 * emid < 0:
+                    hi = mid
+                    e2 = emid
+                else:
+                    lo = mid
+                    e1 = emid
+
+            headings.append(mid)
+
+    # Remove duplicates
+    unique = []
+
+    for h in headings:
+
+        h = h % 360.0
+
+        if not any(abs(h - u) < 0.1 for u in unique):
+            unique.append(90-h)
+
+    return sorted(unique)

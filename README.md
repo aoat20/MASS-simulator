@@ -33,9 +33,10 @@ while mass_sim.is_episode_running():
                                  5_555_000]])
     
     if obs['time_s'] == 300:
-        # Set waypoint location with logical statements
+        # Set waypoint location with a list of logical statements
+        # add_waypoint(vessel1,vessel2,dcpa_avoid,tcpa_avoid,dcpa_resume,tcpa_resume,cpa_side,cpa_end,turn_mag)
         mass_sim.send_waypoint_logic(
-            ["add_waypoint(agent,cruiseliner1,safe,short,safe,imminent,port,large)"])
+            ["add_waypoint(agent,cruiseliner1,safe,short,safe,imminent,port,aft,large)"])
 
 mass_sim.save_episode()
 
