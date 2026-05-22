@@ -46,9 +46,9 @@ class logic_bridge():
             cpa1_bin = self.cpa_to_bin(cpa1_m)
 
             # Compute DCPA and TCPA for the second leg of the diversion
-            cpa2_m, cpa_yds, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
-                                                                   v2_xy, v2_course, v2_speed_mps,
-                                                                   wp, goal_wp)
+            cpa2_m, _, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
+                                                             v2_xy, v2_course, v2_speed_mps,
+                                                             wp, goal_wp)
             cpa2_bin = self.cpa_to_bin(cpa2_m)
             tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
 
@@ -346,11 +346,12 @@ class logic_bridge():
                                  [xy_mg[1].flatten()]],
                                  axis=0)
 
-        x_diff = xy0[0]-mg_flat[0, :]
-        y_diff = xy0[1]-mg_flat[1, :]
+        x_diff = mg_flat[0, :]-xy0[0]
+        y_diff = mg_flat[1, :]-xy0[1]
 
         theta_tmp = (
-            np.array(np.rad2deg(np.atan2(x_diff, y_diff))-course_deg)) % 360
+            np.array(90-np.rad2deg(np.atan2(y_diff, x_diff))-course_deg)) % 360
+
         if turn_dir == "port":
             dir_mask = (theta_tmp >= 180) & (theta_tmp < 360)
         elif turn_dir == "starboard":
@@ -358,18 +359,11 @@ class logic_bridge():
 
         mag_min = [x[1:3] for x in bin_constants.TURN_MAGNITUDES
                    if x[0] == turn_mag][0]
-        mag_mask = np.abs(theta_tmp-180) > mag_min[0]
+
+        mag_mask = np.abs((theta_tmp+180) % 360 - 180) > mag_min[0]
 
         # Combine masks
         mask_out = dir_mask * mag_mask
-
-        # plt.figure
-        # plt.imshow(mag_mask.reshape(xy_mg[0].shape),
-        #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-        #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
-        #            origin='lower')
-        # plt.scatter(xy0[0], xy0[1])
-        # plt.show()
 
         return mask_out
 
@@ -415,12 +409,34 @@ class logic_bridge():
                                             tcpa_bin2=res_tcpa,
                                             vessel=v0,
                                             v2_id=v1_id)
+            # plt.figure
+            # plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.show()
             turn_mask = self.add_wp_area_turn(xy_mg=xy_mg,
                                               xy0=v0.xy,
                                               course_deg=v0.course_deg,
                                               turn_dir=p_or_s,
                                               turn_mag=turn_mag)
+            # plt.figure
+            # plt.imshow(turn_mask.reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.show()
             wp_area = wp_area & cpa_mask & turn_mask
+
+        # plt.figure
+        # plt.imshow(wp_area.reshape(xy_mg[0].shape),
+        #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+        #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+        #            origin='lower')
+        # plt.scatter(v0.xy[0], v0.xy[1])
+        # plt.show()
 
         # get the closest allowable waypoint to the goal
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
