@@ -270,7 +270,10 @@ class MASSsim():
             scen_pth = os.path.join(conf_loc, 'scenarios',
                                     f"scenario{scenario}.json")
         elif isinstance(scenario, str):
-            scen_pth = scenario
+            if ".json" in scenario:
+                scen_pth = scenario
+            else:
+                scen_pth = scenario + ".json"
 
         # Open and load the config file
         with open(scen_pth) as f:
