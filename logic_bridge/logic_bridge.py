@@ -223,7 +223,7 @@ class logic_bridge():
     def turn_magnitude_to_bin(self, turn_magnitude):
         turn_magnitude = turn_magnitude % 180
         bin_sel = [r[0] for r in bin_constants.TURN_MAGNITUDES
-                   if (turn_magnitude > r[1] and turn_magnitude < r[2])][0]
+                   if (turn_magnitude >= r[1] and turn_magnitude < r[2])][0]
         return bin_sel
 
     def remove_duplicates(self, log):
