@@ -30,10 +30,13 @@ class ScenarioGenerator():
                             height=1000)
         dpg.setup_dearpygui()
         dpg.show_viewport()
-        dpg.set_start_callback(callback=self._unshow_depth_map)
+        dpg.set_frame_callback(1, callback=self._unshow_depth_map)
         dpg.start_dearpygui()
 
     def _setup_click_handlers(self):
+        with dpg.handler_registry():
+            dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
+
         with dpg.item_handler_registry(tag="click_handler"):
             dpg.add_item_clicked_handler(callback=self._left_click_callback,
                                          button=dpg.mvMouseButton_Left)
@@ -88,6 +91,59 @@ class ScenarioGenerator():
             dpg.add_button(label="Save scenario",
                            callback=self._save_callback)
 
+    def _mouse_move_callback(self, sender, app_data, user_data):
+        # Get mouse position relative to the plot's X and Y axes
+        mouse_pos = dpg.get_plot_mouse_pos()
+        # Check if the plot is hovered so we only update when inside
+        if dpg.is_item_hovered("map_plot_tag"):
+            if self._adding_wps:
+                # Compute DCPA and TCPA to other vessels
+                annot_txt = ""
+                v_0 = self._scen_dict['vessel_details'][self._vessel_n]
+                v_0_id = v_0["vessel"]
+                for v in self._scen_dict["vessel_details"]:
+                    if v['vessel'] != v_0_id:
+                        xy0_1 = self._waypoints_temp[0]
+                        xy0_2 = mouse_pos
+                        xy1_1 = v["waypoints"][0]
+                        xy1_2 = v["waypoints"][1]
+                        course0 = compute_bearing(xy1=xy0_1,
+                                                  xy2=xy0_2)
+                        course1 = compute_bearing(xy1=xy1_1,
+                                                  xy2=xy1_2)
+                        speed0_mps = kn_to_mps(v_0["speed_kn"])
+                        speed1_mps = kn_to_mps(v["speed_kn"])
+
+                        _, dcpa_yd, tcpa_s = compute_cpa(xy1=xy0_1,
+                                                         course1=course0,
+                                                         speed_mps1=speed0_mps,
+                                                         xy2=xy1_1,
+                                                         course2=course1,
+                                                         speed_mps2=speed1_mps)
+                        annot_txt += f"{v_0_id}: DCPA {dcpa_yd:.0f}yds\n"
+
+            else:
+                # compute range to every vessel
+                annot_txt = ""
+                for v in self._scen_dict["vessel_details"]:
+                    v_id = v['vessel']
+                    xy0_1 = mouse_pos
+                    xy1_1 = v["waypoints"][0]
+                    d_m = compute_distance(xy0_1,
+                                           xy1_1)
+                    d_yd = yds_to_m(d_m)
+                    annot_txt += f"{v_id}: range {d_yd:.0f}"
+            # Update annotation position and text
+            dpg.configure_item(
+                "mouse_annotation",
+                show=True,
+                default_value=(mouse_pos[0], mouse_pos[1]),
+                label=annot_txt
+            )
+        else:
+            dpg.configure_item("mouse_annotation",
+                               show=False)
+
     def _show_depth_map(self, sender, app_data):
         dpg.configure_item("depth_img_tag",
                            show=app_data)
@@ -117,6 +173,12 @@ class ScenarioGenerator():
                               parent="map_plot_tag",
                               pan_stretch=False,
                               tag="map_y_axis")
+        dpg.add_plot_annotation(parent="map_plot_tag",
+                                label="",
+                                default_value=(0.0, 0.0),
+                                offset=[15, 0],
+                                tag="mouse_annotation"
+                                )
 
     def _add_vessel_plot(self, vessel_pos):
         # Get colour
