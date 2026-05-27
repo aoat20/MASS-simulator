@@ -339,7 +339,10 @@ class MASSsim():
             log_path = os.path.join(conf_loc, 'logs',
                                     f"log_{log_file}.json")
         elif isinstance(log_file, str):
-            log_path = log_file
+            if '.json' in log_file:
+                log_path = log_file
+            else:
+                log_path = log_file+'.json'
 
         return log_path
 
