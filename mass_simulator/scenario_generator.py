@@ -48,9 +48,9 @@ class ScenarioGenerator():
                                        handler_registry="click_handler")
 
     def _left_click_callback(self):
-        self._close_rightclick_menu()
+        rc_close = self._close_rightclick_menu()
 
-        if self._adding_wps:
+        if self._adding_wps and not rc_close:
             mouse_pos = dpg.get_plot_mouse_pos()
             self._add_wp(mouse_pos)
 
@@ -70,8 +70,14 @@ class ScenarioGenerator():
                         no_move=True,
                         no_collapse=True):
             if self._adding_wps:
-                dpg.add_button(label="Done adding vessel",
+                dpg.add_button(tag="done_v_tag",
+                               label="Done adding vessel",
                                callback=self._done_adding_boat)
+
+                if len(self._waypoints_temp) < 2:
+                    with dpg.popup("done_v_tag",
+                                   mousebutton=dpg.mvMouseButton_Left):
+                        dpg.add_text("Vessel needs at least 1 waypoint")
             else:
                 dpg.add_button(label="Add vessel here",
                                callback=self._add_new_boat,
@@ -106,11 +112,15 @@ class ScenarioGenerator():
                         xy0_1 = self._waypoints_temp[0]
                         xy0_2 = mouse_pos
                         xy1_1 = v["waypoints"][0]
-                        xy1_2 = v["waypoints"][1]
+                        if len(v["waypoints"]) == 1:
+                            course1 = 0
+                        else:
+                            xy1_2 = v["waypoints"][1]
+                            course1 = compute_bearing(xy1=xy1_1,
+                                                      xy2=xy1_2)
                         course0 = compute_bearing(xy1=xy0_1,
                                                   xy2=xy0_2)
-                        course1 = compute_bearing(xy1=xy1_1,
-                                                  xy2=xy1_2)
+
                         speed0_mps = kn_to_mps(v_0["speed_kn"])
                         speed1_mps = kn_to_mps(v["speed_kn"])
 
@@ -120,7 +130,8 @@ class ScenarioGenerator():
                                                          xy2=xy1_1,
                                                          course2=course1,
                                                          speed_mps2=speed1_mps)
-                        annot_txt += f"{v_0_id}: DCPA {dcpa_yd:.0f}yds\n"
+                        annot_txt += f"{v_0_id}: CPA {dcpa_yd:.0f}yds " \
+                            + f"{tcpa_s/60:.1f}mins\n"
 
             else:
                 # compute range to every vessel
@@ -132,7 +143,7 @@ class ScenarioGenerator():
                     d_m = compute_distance(xy0_1,
                                            xy1_1)
                     d_yd = yds_to_m(d_m)
-                    annot_txt += f"{v_id}: range {d_yd:.0f}"
+                    annot_txt += f"{v_id}: range {d_yd:.0f}yds \n"
             # Update annotation position and text
             dpg.configure_item(
                 "mouse_annotation",
@@ -335,12 +346,17 @@ class ScenarioGenerator():
                                label=app_data)
 
     def _done_adding_boat(self, sender, app_data, user_data):
-        self._close_rightclick_menu()
-        self._scen_dict['vessel_details'][self._vessel_n]["waypoints"] = self._waypoints_temp
-        if f"vessel_params_{self._vessel_n}" in dpg.get_aliases():
-            dpg.delete_item(f"vessel_params_{self._vessel_n}")
-        self._vessel_n += 1
-        self._adding_wps = False
+        if len(self._waypoints_temp) < 2:
+            with dpg.popup("done_v_tag",
+                           mousebutton=dpg.mvMouseButton_Left):
+                dpg.add_text("Vessel needs at least 1 waypoint")
+        else:
+            self._close_rightclick_menu()
+            self._scen_dict['vessel_details'][self._vessel_n]["waypoints"] = self._waypoints_temp
+            if f"vessel_params_{self._vessel_n}" in dpg.get_aliases():
+                dpg.delete_item(f"vessel_params_{self._vessel_n}")
+            self._vessel_n += 1
+            self._adding_wps = False
 
     def _define_new_area(self):
         pass
@@ -413,6 +429,9 @@ class ScenarioGenerator():
     def _close_rightclick_menu(self):
         if "rightclick_menu_tag" in dpg.get_aliases():
             dpg.delete_item("rightclick_menu_tag")
+            return True
+        else:
+            return False
 
     def _get_plot_colors(self, n):
         cols = [[0.8660, 0.3290, 0],
