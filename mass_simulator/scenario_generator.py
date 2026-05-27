@@ -30,6 +30,7 @@ class ScenarioGenerator():
                             height=1000)
         dpg.setup_dearpygui()
         dpg.show_viewport()
+        dpg.set_start_callback(callback=self._unshow_depth_map)
         dpg.start_dearpygui()
 
     def _setup_click_handlers(self):
@@ -90,6 +91,9 @@ class ScenarioGenerator():
     def _show_depth_map(self, sender, app_data):
         dpg.configure_item("depth_img_tag",
                            show=app_data)
+
+    def _unshow_depth_map(self):
+        dpg.configure_item("depth_img_tag", show=False)
 
     def _initialise_map(self):
         with dpg.window(label="World",
