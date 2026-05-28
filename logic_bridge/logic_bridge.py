@@ -54,7 +54,7 @@ class logic_bridge():
 
             cpa_side, cpa_end = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
                                                              xy1=v1_xy,
-                                                             course1=v1_course,
+                                                             course1=course0_new,
                                                              speed_mps1=v1_speed_mps,
                                                              xy2=v2_xy,
                                                              course2=v2_course,
