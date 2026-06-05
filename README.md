@@ -7,8 +7,8 @@ A package to simulate multiple vessels travelling between waypoints.
 ```python
 from mass_simulator import MASSsim
 
-# To run scenario 4 in manual mode
-mass_sim = MASSsim(scenario=4,
+# To run scenario crossing1 in manual mode
+mass_sim = MASSsim(scenario="scenarios/crossing1",
                    mode='manual',
                    log_dir='/home/user/test_log_folder')
 
