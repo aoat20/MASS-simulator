@@ -155,6 +155,9 @@ class Agent():
                 self.course_deg = self.course_deg+course_change_tmp
         else:
             self.turning = False
+
+        # Wrap course back to 360
+        self.course_deg = self.course_deg % 360
         self._compute_xy_step()
 
     def update_other_vessels(self,
