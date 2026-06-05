@@ -164,6 +164,9 @@ class logic_bridge():
         self.log.append([])
         return self.log[self.n-1]
 
+    def add_failed_waypoint_logic(self, wp_logic):
+        self.log[self.n].append(f"FAILED({wp_logic})")
+
     def range_to_bins(self, range_m):
         bin_sel = [r[0] for r in bin_constants.RANGE_BINS
                    if (range_m > r[1] and range_m < r[2])][0]

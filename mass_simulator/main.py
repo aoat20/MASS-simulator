@@ -130,7 +130,11 @@ class MASSsim():
 
     def _is_episode_running(self):
         if not hasattr(self, '_playback'):
-            # Check if all vessels have reached their final waypoint
+            # Time out after a long time
+            if self._world.t_elapsed > 10000:
+                return False
+
+            # Or check if all vessels have reached their final waypoint
             v: Agent
             reached = []
             for v in self._vessels.values():
@@ -234,6 +238,9 @@ class MASSsim():
             if len(wp_xy) != 0:
                 self.set_waypoints(vessel_id=vessel,
                                    waypoints_utm=[wp_xy])
+            else:
+                # Add failed waypoint logic to log
+                self.lb.add_failed_waypoint_logic(waypoint_logic)
         else:
             vessel_id = waypoint_logic[0].strip("resume()")
             self._vessels[vessel_id].resume_mission()
