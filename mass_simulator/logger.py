@@ -68,7 +68,14 @@ class Logger():
                               perf_summary):
         self.log_dict['log'][self.n]['performance_summary'] = perf_summary
 
-    def save_log_file(self):
+    def save_log_file(self,
+                      save_path=[]):
+
+        if save_path:
+            if ".json" not in save_path:
+                save_path = save_path+".json"
+            self.save_path = save_path
+
         # write the test dictionary to the file
         with open(self.save_path, 'w') as f:
             # write the dict to a json file

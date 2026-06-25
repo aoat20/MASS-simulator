@@ -157,8 +157,8 @@ class MASSsim():
             self._plotter.tidy_up()
         return self._is_episode_running()
 
-    def save_episode(self):
-        self._logger.save_log_file()
+    def save_episode(self, save_path=[]):
+        self._logger.save_log_file(save_path)
         dir_tmp = self._logger.save_path[:-5]
         self.lb.output_to_txt(save_loc=dir_tmp)
 
@@ -277,6 +277,13 @@ class MASSsim():
             scen_pth = os.path.join(conf_loc, 'scenarios',
                                     f"scenario{scenario}.json")
         elif isinstance(scenario, str):
+            # if scenario exists in scenarios folder run that
+            conf_loc = os.path.join(os.path.dirname(__file__), '..')
+            scen_tmp = os.path.join(conf_loc, 'scenarios',
+                                    f"{scenario}.json")
+            if os.path.isfile(scen_tmp):
+                scenario = scen_tmp
+
             if ".json" in scenario:
                 scen_pth = scenario
             else:
