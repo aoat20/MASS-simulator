@@ -42,15 +42,15 @@ class logic_bridge():
                                                  wp[0]-v1_xy[0]))
             cpa1_m, _, tcpa1_s = general.compute_cpa(v1_xy, course0_new, v1_speed_mps,
                                                      v2_xy, v2_course, v2_speed_mps)
-            tcpa1_bin = self.tcpa_to_bin(tcpa1_s)
-            cpa1_bin = self.cpa_to_bin(cpa1_m)
+
+            roc1_bin = self.cpa_to_roc_bin(cpa1_m, tcpa1_s)
 
             # Compute DCPA and TCPA for the second leg of the diversion
             cpa2_m, _, tcpa2_s = general.compute_future_cpas(v1_xy, v1_speed_mps,
                                                              v2_xy, v2_course, v2_speed_mps,
                                                              wp, goal_wp)
-            cpa2_bin = self.cpa_to_bin(cpa2_m)
-            tcpa2_bin = self.tcpa_to_bin(tcpa2_s)
+
+            roc2_bin = self.cpa_to_roc_bin(cpa2_m, tcpa2_s)
 
             cpa_side, cpa_end = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
                                                              xy1=v1_xy,
@@ -63,8 +63,8 @@ class logic_bridge():
             turn_mag_bin = self.turn_magnitude_to_bin(
                 np.abs(v1_course-course0_new))
             log_entry = f"add_waypoint({v1_id},{v2_id}," \
-                        + f"{cpa1_bin},{tcpa1_bin}," \
-                        + f"{cpa2_bin},{tcpa2_bin}," \
+                        + f"{roc1_bin}," \
+                        + f"{roc2_bin}," \
                         + f"{cpa_side},{cpa_end}," \
                         + f"{turn_mag_bin})"
 
@@ -179,6 +179,18 @@ class logic_bridge():
     def closing_or_opening(self, tcpa_s):
         pass
 
+    def cpa_to_roc_bin(self, dcpa, tcpa):
+        # Check the cpa for each risk of collision and find which bin is appropriate
+        roc_out = []
+        for roc in bin_constants.RISK_OF_COLLISION:
+            dcpa_lims, tcpa_lims = self.roc_bin_to_cpa_lims(roc[0])
+            if dcpa > dcpa_lims[0] and dcpa < dcpa_lims[1] \
+                    and tcpa > tcpa_lims[0] and tcpa < tcpa_lims[1]:
+                roc_out.append(roc[0])
+        if len(roc_out) == 1:
+            roc_out = roc_out[0]
+        return roc_out
+
     def tcpa_to_bin(self, tcpa_s):
         bin_sel = [r[0] for r in bin_constants.TCPA_BINS
                    if (tcpa_s > r[1] and tcpa_s < r[2])][0]
@@ -229,6 +241,15 @@ class logic_bridge():
                    if (turn_magnitude >= r[1] and turn_magnitude < r[2])][0]
         return bin_sel
 
+    def roc_bin_to_cpa_lims(self, roc_bin):
+        dcpa_tcpa = [x[1:5] for x in bin_constants.RISK_OF_COLLISION
+                     if x[0] == roc_bin][0]
+        dcpa_lims = [self.bin_to_dcpa(dcpa_tcpa[0])[0],
+                     self.bin_to_dcpa(dcpa_tcpa[1])[1]]
+        tcpa_lims = [self.bin_to_tcpa(dcpa_tcpa[2])[0],
+                     self.bin_to_tcpa(dcpa_tcpa[3])[1]]
+        return dcpa_lims, tcpa_lims
+
     def remove_duplicates(self, log):
 
         log_init = [n for n in log[0] if "add_waypoint" not in n]
@@ -271,6 +292,9 @@ class logic_bridge():
         return log_out
 
     def add_wp_area_range_brg(self, xy0, course_deg, r1, r2, theta_1, theta_2):
+        # The area mask using the bearing and range to the waypoint
+        # relative to some datum
+
         mg_flat = np.concatenate([[self.xy_mg[0].flatten()],
                                  [self.xy_mg[1].flatten()]],
                                  axis=0)
@@ -303,6 +327,7 @@ class logic_bridge():
                         v2_id,
                         cpa_side,
                         cpa_end):
+        # The old version using the dcpa and tcpa for each legs of the diversion
 
         # Get the minimum allowable dcpa and tcpa for diversion leg and resume leg
         dcpa1_lim = self.bin_to_dcpa(dcpa_bin=dcpa_bin1)
@@ -356,6 +381,72 @@ class logic_bridge():
                                      and (cpa_end == cpa_end_tmp or cpa_end == ''))
         return mask_out, cpa_side_end_mask
 
+    def add_wp_area_riskofcollision(self,
+                                    xy_mg,
+                                    cpa_roc_1,
+                                    cpa_roc_2,
+                                    vessel: agent.Agent,
+                                    v2_id,
+                                    cpa_side,
+                                    cpa_end):
+        # The more simple version using risks of collision based CPAs
+
+        [dcpa1_lims, tcpa1_lims] = self.roc_bin_to_cpa_lims(roc_bin=cpa_roc_1)
+        [dcpa2_lims, tcpa2_lims] = self.roc_bin_to_cpa_lims(roc_bin=cpa_roc_2)
+
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        xy1 = vessel.xy
+        speed1 = vessel.speed_mps
+        xy2 = vessel.other_vessels[v2_id].xy
+        course2 = vessel.other_vessels[v2_id].course_deg
+        speed2 = vessel.other_vessels[v2_id].speed_mps
+        goal_wp = vessel.goal_waypoint
+
+        mask_out = []
+        cpa_side_end_mask = []
+        for wp in mg_flat.T:
+            course1 = general.compute_bearing(xy1,
+                                              wp)
+            dcpa1_m, _, tcpa1_s = general.compute_cpa(xy1=xy1,
+                                                      course1=course1,
+                                                      speed_mps1=speed1,
+                                                      xy2=xy2,
+                                                      course2=course2,
+                                                      speed_mps2=speed2)
+            dcpa2_m, _, tcpa2_s = general.compute_future_cpas(xy1=xy1,
+                                                              speed_mps1=speed1,
+                                                              xy2=xy2,
+                                                              course2=course2,
+                                                              speed_mps2=speed2,
+                                                              wp=wp,
+                                                              goal_wp=goal_wp)
+
+            # Make the risk of collision mask
+            mask_out.append(dcpa1_m > dcpa1_lims[0]
+                            and dcpa1_m < dcpa1_lims[1]
+                            and (tcpa1_s > tcpa1_lims[0] or tcpa1_s <= 0)
+                            and tcpa1_s < tcpa1_lims[1]
+                            and dcpa2_m > dcpa2_lims[0]
+                            and dcpa2_m < dcpa2_lims[1]
+                            and (tcpa2_s > tcpa2_lims[0] or tcpa2_s <= 0)
+                            and tcpa2_s < tcpa2_lims[1])
+
+            cpa_side_tmp, cpa_end_tmp = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
+                                                                     xy1=xy1,
+                                                                     course1=course1,
+                                                                     speed_mps1=speed1,
+                                                                     xy2=xy2,
+                                                                     course2=course2,
+                                                                     speed_mps2=speed2)
+
+            # Make the side end mask
+            cpa_side_end_mask.append((cpa_side == cpa_side_tmp or cpa_side == '')
+                                     and (cpa_end == cpa_end_tmp or cpa_end == ''))
+        return mask_out, cpa_side_end_mask
+
     def add_wp_area_turn(self,
                          xy_mg,
                          xy0,
@@ -402,25 +493,22 @@ class logic_bridge():
 
         wp: str
         for wp in waypoint_logic:
+            #  add_waypoint(V0,V1,avoid,resume,cpa_side,cpa_end,turn_mag)
             wp_list = wp.strip("add_waypoint").strip("()").split(",")
             v0 = vessels[wp_list[0]]
             v1_id = wp_list[1]
-            div_dcpa = wp_list[2]
-            div_tcpa = wp_list[3]
-            res_dcpa = wp_list[4]
-            res_tcpa = wp_list[5]
-            cpa_side = wp_list[6]
-            cpa_end = wp_list[7]
-            turn_mag = wp_list[8]
-            cpa_mask, side_end_mask = self.add_wp_area_cpa(xy_mg=xy_mg,
-                                                           dcpa_bin1=div_dcpa,
-                                                           tcpa_bin1=div_tcpa,
-                                                           dcpa_bin2=res_dcpa,
-                                                           tcpa_bin2=res_tcpa,
-                                                           vessel=v0,
-                                                           v2_id=v1_id,
-                                                           cpa_side=cpa_side,
-                                                           cpa_end=cpa_end)
+            cpa_roc_1 = wp_list[2]
+            cpa_roc_2 = wp_list[3]
+            cpa_side = wp_list[4]
+            cpa_end = wp_list[5]
+            turn_mag = wp_list[6]
+            cpa_mask, side_end_mask = self.add_wp_area_riskofcollision(xy_mg=xy_mg,
+                                                                       cpa_roc_1=cpa_roc_1,
+                                                                       cpa_roc_2=cpa_roc_2,
+                                                                       vessel=v0,
+                                                                       v2_id=v1_id,
+                                                                       cpa_side=cpa_side,
+                                                                       cpa_end=cpa_end)
             turn_mask = self.add_wp_area_turn(xy_mg=xy_mg,
                                               xy0=v0.xy,
                                               course_deg=v0.course_deg,
@@ -446,6 +534,7 @@ class logic_bridge():
             #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
             #            origin='lower')
             # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.show()
 
             wp_area = wp_area & cpa_mask & turn_mask & side_end_mask
 
@@ -455,7 +544,9 @@ class logic_bridge():
                                  axis=0)
         mg_flat_wp_area = mg_flat[:, wp_area]
         distances = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.goal_waypoint,
-                                                                [2, 1]), axis=0)
+                                                                [2, 1]), axis=0) \
+            + np.linalg.norm(mg_flat_wp_area - np.reshape(v0.xy,
+                                                          [2, 1]), axis=0)
 
         if len(distances) != 0:
             min_i = np.argmin(distances)
