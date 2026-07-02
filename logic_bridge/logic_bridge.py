@@ -63,8 +63,8 @@ class logic_bridge():
             turn_mag_bin = self.turn_magnitude_to_bin(
                 np.abs(v1_course-course0_new))
             log_entry = f"add_waypoint({v1_id},{v2_id}," \
-                        + f"{roc1_bin}," \
-                        + f"{roc2_bin}," \
+                        + f"{roc1_bin},".replace("'", "").replace(" ", "") \
+                        + f"{roc2_bin},".replace("'", "").replace(" ", "") \
                         + f"{cpa_side},{cpa_end}," \
                         + f"{turn_mag_bin})"
 
