@@ -47,7 +47,7 @@ class bin_constants:
     RISK_OF_COLLISION = [["opening", "very_close", "safe",
                                      "opening", "opening"],
                          ["dcpa_safe", "marginal", "safe",
-                                       "imminent", "very_long"],
+                                       "opening", "very_long"],
                          ["tcpa_safe", "very_close", "safe",
                                        "long", "very_long"],
                          ["imminent_veryclose", "very_close", "very_close",

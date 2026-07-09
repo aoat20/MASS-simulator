@@ -427,11 +427,11 @@ class logic_bridge():
             # Make the risk of collision mask
             mask_out.append(dcpa1_m > dcpa1_lims[0]
                             and dcpa1_m < dcpa1_lims[1]
-                            and (tcpa1_s > tcpa1_lims[0] or tcpa1_s <= 0)
+                            and (tcpa1_s > tcpa1_lims[0])
                             and tcpa1_s < tcpa1_lims[1]
                             and dcpa2_m > dcpa2_lims[0]
                             and dcpa2_m < dcpa2_lims[1]
-                            and (tcpa2_s > tcpa2_lims[0] or tcpa2_s <= 0)
+                            and (tcpa2_s > tcpa2_lims[0])
                             and tcpa2_s < tcpa2_lims[1])
 
             cpa_side_tmp, cpa_end_tmp = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
@@ -443,8 +443,8 @@ class logic_bridge():
                                                                      speed_mps2=speed2)
 
             # Make the side end mask
-            cpa_side_end_mask.append((cpa_side == cpa_side_tmp or cpa_side == '')
-                                     and (cpa_end == cpa_end_tmp or cpa_end == ''))
+            cpa_side_end_mask.append((cpa_side == cpa_side_tmp or (cpa_side != "port" and cpa_side != "starboard"))
+                                     and (cpa_end == cpa_end_tmp or (cpa_end != "forward" and cpa_end != "aft")))
         return mask_out, cpa_side_end_mask
 
     def add_wp_area_turn(self,
@@ -500,7 +500,11 @@ class logic_bridge():
             cpa_roc_1 = wp_list[2]
             cpa_roc_2 = wp_list[3]
             cpa_side = wp_list[4]
+            if cpa_side != "port" and cpa_side != "starboard":
+                cpa_side = ""
             cpa_end = wp_list[5]
+            if cpa_end != "forward" and cpa_side != "aft":
+                cpa_side = ""
             turn_mag = wp_list[6]
             cpa_mask, side_end_mask = self.add_wp_area_riskofcollision(xy_mg=xy_mg,
                                                                        cpa_roc_1=cpa_roc_1,
@@ -543,10 +547,17 @@ class logic_bridge():
                                   [xy_mg[1].flatten()]],
                                  axis=0)
         mg_flat_wp_area = mg_flat[:, wp_area]
-        distances = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.goal_waypoint,
-                                                                [2, 1]), axis=0) \
-            + np.linalg.norm(mg_flat_wp_area - np.reshape(v0.xy,
-                                                          [2, 1]), axis=0)
+
+        wp_to_final = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.goal_waypoint,
+                                                                  [2, 1]), axis=0)
+        if len(v0.waypoints) == 3:
+            pos_to_wp = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.waypoints[1],
+                                                                    [2, 1]), axis=0)
+        else:
+            pos_to_wp = np.linalg.norm(mg_flat_wp_area - np.reshape(v0.xy,
+                                                                    [2, 1]), axis=0)
+
+        distances = pos_to_wp + wp_to_final
 
         if len(distances) != 0:
             min_i = np.argmin(distances)
