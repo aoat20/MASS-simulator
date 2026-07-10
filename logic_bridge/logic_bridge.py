@@ -218,7 +218,7 @@ class logic_bridge():
                                      np.arange(0, 32),
                                      right=0)))
 
-    def bearing_to_sector(self, bearing_deg):
+    def bearing_to_sector_segment(self, bearing_deg):
         seg = self.bearing_to_segment(bearing_deg=bearing_deg)
         brg_sect = [s[0] for s in bin_constants.SECTOR
                     if seg >= s[1] and seg <= s[2]][0]
@@ -226,6 +226,22 @@ class logic_bridge():
             is_arc_overtaking = True
         else:
             is_arc_overtaking = False
+        return brg_sect, is_arc_overtaking
+
+    def bearing_to_sector(self, bearing_deg):
+        brg_tmp = (bearing_deg) % 360
+
+        sector_n = int(np.ceil(np.interp(brg_tmp,
+                                         np.linspace(11.25, 348.75, 16),
+                                         np.arange(0, 16),
+                                         right=0)))
+        brg_sect = bin_constants.SECTOR[sector_n][0]
+
+        if brg_tmp >= 112.5 and brg_tmp <= 247.5:
+            is_arc_overtaking = True
+        else:
+            is_arc_overtaking = False
+
         return brg_sect, is_arc_overtaking
 
     def segment_to_bearing(self, segment):

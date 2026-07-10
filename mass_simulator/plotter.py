@@ -217,11 +217,10 @@ class Plotter():
                                 thickness=0.1,
                                 )
 
-            for sect in bin_constants.SECTOR:
-                th_1 = logic_bridge.segment_to_bearing(self, segment=sect[1])
+            for brg in np.linspace(11.25, 348.75, 16):
                 dpg.draw_line([0., 0.],
-                              [1000000.*np.cos((th_1[0]*np.pi/180.)),
-                               1000000.*np.sin((th_1[0]*np.pi/180.))],
+                              [1000000.*np.cos((brg*np.pi/180.)),
+                               1000000.*np.sin((brg*np.pi/180.))],
                               color=col_tmp,
                               thickness=0.1,
                               )
