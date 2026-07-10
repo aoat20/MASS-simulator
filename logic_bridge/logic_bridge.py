@@ -549,27 +549,27 @@ class logic_bridge():
                                               course_deg=v0.course_deg,
                                               turn_mag=turn_mag)
 
-            plt.figure
-            plt.subplot(311)
-            plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
-                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-                               np.min(xy_mg[1]), np.max(xy_mg[1])],
-                       origin='lower')
-            plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.figure
+            # plt.subplot(311)
+            # plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
 
-            plt.subplot(312)
-            plt.imshow(np.array(side_end_mask).reshape(xy_mg[0].shape),
-                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-                               np.min(xy_mg[1]), np.max(xy_mg[1])],
-                       origin='lower')
-            plt.scatter(v0.xy[0], v0.xy[1])
-            plt.subplot(313)
-            plt.imshow(np.array(turn_mask).reshape(xy_mg[0].shape),
-                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-                               np.min(xy_mg[1]), np.max(xy_mg[1])],
-                       origin='lower')
-            plt.scatter(v0.xy[0], v0.xy[1])
-            plt.show()
+            # plt.subplot(312)
+            # plt.imshow(np.array(side_end_mask).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.subplot(313)
+            # plt.imshow(np.array(turn_mask).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.show()
 
             wp_area = wp_area & cpa_mask & turn_mask & side_end_mask
 
