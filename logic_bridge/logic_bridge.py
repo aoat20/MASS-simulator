@@ -62,7 +62,7 @@ class logic_bridge():
 
             turn_mag_bin = self.turn_magnitude_to_bin(
                 np.abs(v1_course-course0_new))
-            log_entry = f"add_waypoint({v1_id},{v2_id}," \
+            log_entry = f"waypoint({v1_id},{v2_id}," \
                         + f"{roc1_bin},".replace("'", "").replace(" ", "") \
                         + f"{roc2_bin},".replace("'", "").replace(" ", "") \
                         + f"{cpa_side},{cpa_end}," \
@@ -184,11 +184,13 @@ class logic_bridge():
         roc_out = []
         for roc in bin_constants.RISK_OF_COLLISION:
             dcpa_lims, tcpa_lims = self.roc_bin_to_cpa_lims(roc[0])
-            if dcpa > dcpa_lims[0] and dcpa < dcpa_lims[1] \
-                    and tcpa > tcpa_lims[0] and tcpa < tcpa_lims[1]:
-                roc_out.append(roc[0])
-        if len(roc_out) == 1:
-            roc_out = roc_out[0]
+            for n in range(len(dcpa_lims)):
+                if dcpa > dcpa_lims[n][0] and dcpa < dcpa_lims[n][1] \
+                        and tcpa > tcpa_lims[n][0] and tcpa < tcpa_lims[n][1]:
+                    roc_out = roc[0]
+        if roc_out == "opening" or roc_out == "dcpa_acceptable":
+            roc_out = "no_risk"
+
         return roc_out
 
     def tcpa_to_bin(self, tcpa_s):
@@ -258,17 +260,26 @@ class logic_bridge():
         return bin_sel
 
     def roc_bin_to_cpa_lims(self, roc_bin):
-        dcpa_tcpa = [x[1:5] for x in bin_constants.RISK_OF_COLLISION
-                     if x[0] == roc_bin][0]
-        dcpa_lims = [self.bin_to_dcpa(dcpa_tcpa[0])[0],
-                     self.bin_to_dcpa(dcpa_tcpa[1])[1]]
-        tcpa_lims = [self.bin_to_tcpa(dcpa_tcpa[2])[0],
-                     self.bin_to_tcpa(dcpa_tcpa[3])[1]]
+        if roc_bin == "no_risk":
+            roc_bin = ['opening', 'dcpa_acceptable']
+        else:
+            roc_bin = [roc_bin]
+
+        dcpa_lims = []
+        tcpa_lims = []
+        for roc_bin_tmp in roc_bin:
+            dcpa_tcpa = [x[1:5] for x in bin_constants.RISK_OF_COLLISION
+                         if x[0] == roc_bin_tmp][0]
+            dcpa_lims.append([self.bin_to_dcpa(dcpa_tcpa[0])[0],
+                              self.bin_to_dcpa(dcpa_tcpa[1])[1]])
+            tcpa_lims.append([self.bin_to_tcpa(dcpa_tcpa[2])[0],
+                              self.bin_to_tcpa(dcpa_tcpa[3])[1]])
+
         return dcpa_lims, tcpa_lims
 
     def remove_duplicates(self, log):
 
-        log_init = [n for n in log[0] if "add_waypoint" not in n]
+        log_init = [n for n in log[0] if "waypoint" not in n]
         # Remove duplicate logs until they change
         log_tmp = [log_init]
         for n in range(len(log)-1):
@@ -406,7 +417,6 @@ class logic_bridge():
                                     cpa_side,
                                     cpa_end):
         # The more simple version using risks of collision based CPAs
-
         [dcpa1_lims, tcpa1_lims] = self.roc_bin_to_cpa_lims(roc_bin=cpa_roc_1)
         [dcpa2_lims, tcpa2_lims] = self.roc_bin_to_cpa_lims(roc_bin=cpa_roc_2)
 
@@ -441,14 +451,18 @@ class logic_bridge():
                                                               goal_wp=goal_wp)
 
             # Make the risk of collision mask
-            mask_out.append(dcpa1_m > dcpa1_lims[0]
-                            and dcpa1_m < dcpa1_lims[1]
-                            and (tcpa1_s > tcpa1_lims[0])
-                            and tcpa1_s < tcpa1_lims[1]
-                            and dcpa2_m > dcpa2_lims[0]
-                            and dcpa2_m < dcpa2_lims[1]
-                            and (tcpa2_s > tcpa2_lims[0])
-                            and tcpa2_s < tcpa2_lims[1])
+            mask_point = []
+            for n in range(len(dcpa1_lims)):
+                for m in range(len(dcpa2_lims)):
+                    mask_point.append(dcpa1_m > dcpa1_lims[n][0]
+                                      and dcpa1_m < dcpa1_lims[n][1]
+                                      and tcpa1_s > tcpa1_lims[n][0]
+                                      and tcpa1_s < tcpa1_lims[n][1]
+                                      and dcpa2_m > dcpa2_lims[m][0]
+                                      and dcpa2_m < dcpa2_lims[m][1]
+                                      and tcpa2_s > tcpa2_lims[m][0]
+                                      and tcpa2_s < tcpa2_lims[m][1])
+            mask_out.append(any(mask_point))
 
             cpa_side_tmp, cpa_end_tmp = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
                                                                      xy1=xy1,
@@ -510,7 +524,7 @@ class logic_bridge():
         wp: str
         for wp in waypoint_logic:
             #  add_waypoint(V0,V1,avoid,resume,cpa_side,cpa_end,turn_mag)
-            wp_list = wp.strip("add_waypoint").strip("()").split(",")
+            wp_list = wp.strip("waypoint").strip("()").split(",")
             v0 = vessels[wp_list[0]]
             v1_id = wp_list[1]
             cpa_roc_1 = wp_list[2]
@@ -522,6 +536,7 @@ class logic_bridge():
             if cpa_end != "forward" and cpa_side != "aft":
                 cpa_side = ""
             turn_mag = wp_list[6]
+
             cpa_mask, side_end_mask = self.add_wp_area_riskofcollision(xy_mg=xy_mg,
                                                                        cpa_roc_1=cpa_roc_1,
                                                                        cpa_roc_2=cpa_roc_2,
@@ -534,27 +549,27 @@ class logic_bridge():
                                               course_deg=v0.course_deg,
                                               turn_mag=turn_mag)
 
-            # plt.figure
-            # plt.subplot(311)
-            # plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
-            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
-            #            origin='lower')
-            # plt.scatter(v0.xy[0], v0.xy[1])
+            plt.figure
+            plt.subplot(311)
+            plt.imshow(np.array(cpa_mask).reshape(xy_mg[0].shape),
+                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+                               np.min(xy_mg[1]), np.max(xy_mg[1])],
+                       origin='lower')
+            plt.scatter(v0.xy[0], v0.xy[1])
 
-            # plt.subplot(312)
-            # plt.imshow(np.array(side_end_mask).reshape(xy_mg[0].shape),
-            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
-            #            origin='lower')
-            # plt.scatter(v0.xy[0], v0.xy[1])
-            # plt.subplot(313)
-            # plt.imshow(np.array(turn_mask).reshape(xy_mg[0].shape),
-            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
-            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
-            #            origin='lower')
-            # plt.scatter(v0.xy[0], v0.xy[1])
-            # plt.show()
+            plt.subplot(312)
+            plt.imshow(np.array(side_end_mask).reshape(xy_mg[0].shape),
+                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+                               np.min(xy_mg[1]), np.max(xy_mg[1])],
+                       origin='lower')
+            plt.scatter(v0.xy[0], v0.xy[1])
+            plt.subplot(313)
+            plt.imshow(np.array(turn_mask).reshape(xy_mg[0].shape),
+                       extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+                               np.min(xy_mg[1]), np.max(xy_mg[1])],
+                       origin='lower')
+            plt.scatter(v0.xy[0], v0.xy[1])
+            plt.show()
 
             wp_area = wp_area & cpa_mask & turn_mask & side_end_mask
 

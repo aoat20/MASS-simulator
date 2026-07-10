@@ -232,7 +232,7 @@ class MASSsim():
         return obs_dict, self.lb.log[self.lb.n-1]
 
     def send_waypoint_logic(self, waypoint_logic):
-        if "add_waypoint" in "/".join(waypoint_logic):
+        if "waypoint" in "/".join(waypoint_logic):
             vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
                                                                   vessels=self._vessels)
             if len(wp_xy) != 0:
