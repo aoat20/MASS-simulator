@@ -9,21 +9,22 @@ class bin_constants:
                   ["very_far", 5*1852, np.inf]]
 
     SECTOR = [["ahead", 0, 0],
-              ["port_bow_forward", 29, 31],
-              ["port_bow_broad", 28, 28],
-              ["port_beam_forward", 25, 27],
-              ["port_beam", 24, 24],
-              ["port_beam_aft", 21, 23],
-              ["port_quarter_broad", 20, 20],
-              ["port_quarter_aft", 17, 19],
-              ["astern", 16, 16],
-              ["starboard_quarter_aft", 13, 15],
-              ["starboard_quarter_broad", 12, 12],
-              ["starboard_beam_aft", 9, 11],
-              ["starboard_beam", 8, 8],
-              ["starboard_beam_forward", 5, 7],
+              ["starboard_bow_forward", 1, 3],
               ["starboard_bow_broad", 4, 4],
-              ["starboard_bow_forward", 1, 3]]
+              ["starboard_beam_forward", 5, 7],
+              ["starboard_beam", 8, 8],
+              ["starboard_beam_aft", 9, 11],
+              ["starboard_quarter_broad", 12, 12],
+              ["starboard_quarter_aft", 13, 15],
+              ["astern", 16, 16],
+              ["port_quarter_aft", 17, 19],
+              ["port_quarter_broad", 20, 20],
+              ["port_beam_aft", 21, 23],
+              ["port_beam", 24, 24],
+              ["port_beam_forward", 25, 27],
+              ["port_bow_broad", 28, 28],
+              ["port_bow_forward", 29, 31]
+              ]
 
     CPA_BINS = [["critical", 0, 0.1*1852],
                 ["very_close", 0.1*1852, 0.25*1852],
