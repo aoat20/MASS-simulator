@@ -523,7 +523,7 @@ class logic_bridge():
 
         wp: str
         for wp in waypoint_logic:
-            #  add_waypoint(V0,V1,avoid,resume,cpa_side,cpa_end,turn_mag)
+            #  waypoint(V0,V1,avoid,resume,cpa_side,cpa_end,turn_mag)
             wp_list = wp.strip("waypoint").strip("()").split(",")
             v0 = vessels[wp_list[0]]
             v1_id = wp_list[1]
@@ -533,8 +533,8 @@ class logic_bridge():
             if cpa_side != "port" and cpa_side != "starboard":
                 cpa_side = ""
             cpa_end = wp_list[5]
-            if cpa_end != "forward" and cpa_side != "aft":
-                cpa_side = ""
+            if cpa_end != "forward" and cpa_end != "aft":
+                cpa_end = ""
             turn_mag = wp_list[6]
 
             cpa_mask, side_end_mask = self.add_wp_area_riskofcollision(xy_mg=xy_mg,
