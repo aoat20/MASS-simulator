@@ -175,7 +175,8 @@ class Plotter():
                              default_value=True,
                              tag='tag_play')
             dpg.add_drag_float(label="Playspeed",
-                               min_value=0.1,
+                               tag="playspeed_slider",
+                               min_value=0,
                                max_value=100,
                                default_value=self.playspeed,
                                callback=self.set_playspeed)
@@ -252,6 +253,10 @@ class Plotter():
 
     def _set_play(self, sender, app_data):
         self.play = app_data
+        if app_data:
+            self.playspeed = dpg.get_value("playspeed_slider")
+        else:
+            self.playspeed = 0
 
     def set_play(self, play):
         self.play = play
@@ -889,7 +894,11 @@ class Plotter():
         dpg.destroy_context()
 
     def advance_one_frame_check(self, t_step):
-        if time() - self.tic >= t_step/(self.playspeed):
+        if self.playspeed == 0:
+            t = np.inf
+        else:
+            t = t_step/(self.playspeed)
+        if time() - self.tic >= t:
             self.tic = time()
             return True
         else:
