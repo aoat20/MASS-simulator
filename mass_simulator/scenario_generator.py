@@ -130,7 +130,7 @@ class ScenarioGenerator():
                                                          xy2=xy1_1,
                                                          course2=course1,
                                                          speed_mps2=speed1_mps)
-                        annot_txt += f"{v_0_id}: CPA {dcpa_yd:.0f}yds " \
+                        annot_txt += f"{v['vessel']}: CPA {dcpa_yd:.0f}yds " \
                             + f"{tcpa_s/60:.1f}mins\n"
 
             else:
