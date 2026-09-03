@@ -39,11 +39,10 @@ class bin_constants:
                  ["long", 18*60, 24*60],
                  ["very_long", 24*60, np.inf]]
 
-    TURN_MAGNITUDES = [["insubstantial", 0, 20],
-                       ["small", 20, 30],
-                       ["moderate", 30, 40],
-                       ["large", 40, 60],
-                       ["very_large", 60, 180]]
+    TURN_MAGNITUDES = [["insubstantial", 0, 15],
+                       ["small", 15, 30],
+                       ["moderate", 30, 60],
+                       ["large", 60, 180]]
 
     # roc, dcpa1, dcpa2, tcpa1, tcpa2
     RISK_OF_COLLISION = [["opening", "critical", "safe",        # no_risk
@@ -51,22 +50,22 @@ class bin_constants:
                          ["dcpa_acceptable", "marginal", "safe",    # no_risk
                                              "imminent", "very_long"],
                          ["risk_developing", "critical", "close",
-                          "long", "very_long"],
-                         ["imminent_critical", "critical", "critical",
-                                               "imminent", "imminent"],
-                         ["imminent_veryclose", "very_close", "very_close",
-                                                "imminent", "imminent"],
-                         ["imminent_close", "close", "close",
-                                            "imminent", "imminent"],
-                         ["short_critical", "critical", "critical",
-                                            "short", "short"],
-                         ["short_veryclose", "very_close", "very_close",
-                                             "short", "short"],
-                         ["short_close", "close", "close",
-                                         "short", "short"],
-                         ["medium_critical", "critical", "critical",
-                                             "medium", "medium"],
+                                             "long", "very_long"],
+                         ["medium_close", "close", "close",
+                                          "medium", "medium"],
                          ["medium_veryclose", "very_close", "very_close",
                                               "medium", "medium"],
-                         ["medium_close", "close", "close",
-                                          "medium", "medium"]]
+                         ["medium_critical", "critical", "critical",
+                                             "medium", "medium"],
+                         ["short_close", "close", "close",
+                                         "short", "short"],
+                         ["short_veryclose", "very_close", "very_close",
+                                             "short", "short"],
+                         ["short_critical", "critical", "critical",
+                                            "short", "short"],
+                         ["imminent_close", "close", "close",
+                                            "imminent", "imminent"],
+                         ["imminent_veryclose", "very_close", "very_close",
+                                                "imminent", "imminent"],
+                         ["imminent_critical", "critical", "critical",
+                                               "imminent", "imminent"]]
