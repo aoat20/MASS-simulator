@@ -262,6 +262,10 @@ class Plotter():
         self.play = play
         dpg.set_value('tag_play',
                       play)
+        if play:
+            self.playspeed = dpg.get_value("playspeed_slider")
+        else:
+            self.playspeed = 0
 
     def _clear_wps(self, sender, app_data):
         self._waypoints_temp = {}
@@ -896,9 +900,11 @@ class Plotter():
     def advance_one_frame_check(self, t_step):
         if self.playspeed == 0:
             t = np.inf
+            return False
         else:
             t = t_step/(self.playspeed)
-        if time() - self.tic >= t:
+
+        if (time() - self.tic) >= t:
             self.tic = time()
             return True
         else:
