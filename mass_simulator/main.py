@@ -262,9 +262,6 @@ class MASSsim():
             else:
                 # Add failed waypoint logic to log
                 self.lb.add_failed_waypoint_logic(waypoint_logic)
-        elif "resume" in waypoint_logic[0]:
-            vessel_id = waypoint_logic[0].strip("resume()")
-            self._vessels[vessel_id].resume_mission()
         else:
             vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
                                                                   vessels=self._vessels)
