@@ -18,11 +18,12 @@ class MASSsim():
                  log_dir: str = "logs/",
                  log_file: int | str = "",
                  playspeed: int = 10,
-                 debug_logic: bool = False):
+                 debug_logic: bool = False,
+                 turn_logic_flag: bool = False):
 
         self.termination_reason = ""
 
-        self.lb = logic_bridge()
+        self.lb = logic_bridge(turn_logic_flag=turn_logic_flag)
 
         if mode == "manual":
             self._start_manual(scenario=scenario,
@@ -159,6 +160,7 @@ class MASSsim():
 
     def save_episode(self, save_path=[]):
         self._logger.save_log_file(save_path)
+        # Strip ".json" from the end and save the logic observation
         dir_tmp = self._logger.save_path[:-5]
         self.lb.output_to_txt(save_loc=dir_tmp)
 
@@ -210,13 +212,18 @@ class MASSsim():
             self._playback_step_update()
 
     def next_step(self):
+        playing = True
         if hasattr(self, '_plotter'):
             if self._is_plotter_running():
                 self._update_plotter()
+                playing = self._plotter.play
 
         if self.is_episode_running():
-            obs, logic_obs = self._manualtest_next_step()
-            return obs, logic_obs
+            if playing:
+                self._manualtest_next_step()
+                return True
+            else:
+                return False
 
     def get_logic_obs(self):
         obs, _ = self.get_obs()
@@ -231,7 +238,7 @@ class MASSsim():
         obs_dict['vessels'] = self._vessels
         return obs_dict, self.lb.log[self.lb.n-1]
 
-    def send_waypoint_logic(self, waypoint_logic):
+    def send_waypoint_logic_old(self, waypoint_logic):
         if "waypoint" in "/".join(waypoint_logic):
             vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
                                                                   vessels=self._vessels)
@@ -244,6 +251,29 @@ class MASSsim():
         else:
             vessel_id = waypoint_logic[0].strip("resume()")
             self._vessels[vessel_id].resume_mission()
+
+    def send_waypoint_logic(self, waypoint_logic):
+        if "waypoint" in "/".join(waypoint_logic):
+            vessel, wp_xy = self.lb.waypoint_logic_to_coordinates_wp(waypoint_logic=waypoint_logic,
+                                                                     vessels=self._vessels)
+            if len(wp_xy) != 0:
+                self.set_waypoints(vessel_id=vessel,
+                                   waypoints_utm=[wp_xy])
+            else:
+                # Add failed waypoint logic to log
+                self.lb.add_failed_waypoint_logic(waypoint_logic)
+        elif "resume" in waypoint_logic[0]:
+            vessel_id = waypoint_logic[0].strip("resume()")
+            self._vessels[vessel_id].resume_mission()
+        else:
+            vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
+                                                                  vessels=self._vessels)
+            if len(wp_xy) != 0:
+                self.set_waypoints(vessel_id=vessel,
+                                   waypoints_utm=[wp_xy])
+            else:
+                # Add failed waypoint logic to log
+                self.lb.add_failed_waypoint_logic(waypoint_logic)
 
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)
@@ -359,6 +389,9 @@ class MASSsim():
                 log_path = log_file+'.json'
 
         return log_path
+
+    def end_episode(self):
+        self._world.t_elapsed = 10001
 
 
 def main():
