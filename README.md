@@ -20,23 +20,28 @@ mass_sim = MASSsim(scenario=4,
 # Run until mission is finished
 while mass_sim.is_episode_running():
     # Advance to the next time step
-    obs, obs_log = mass_sim.next_step()
+    if mass_sim.next_step():
+        # Get the observations
+        obs, obs_log = mass_sim.get_obs()
 
-    # Get the observations
-    obs, obs_log = mass_sim.get_obs()
-
-    # Do actions (the time is arbitrary)
-    if obs['time_s'] == 250:
-        # Set waypoint location
-        mass_sim.set_waypoints('agent',
-                               [[430_000,
-                                 5_555_000]])
-    
-    if obs['time_s'] == 300:
-        # Set waypoint location with a list of logical statements
-        # add_waypoint(vessel1,vessel2,dcpa_avoid,tcpa_avoid,dcpa_resume,tcpa_resume,cpa_side,cpa_end,turn_mag)
-        mass_sim.send_waypoint_logic(
-            ["add_waypoint(agent,cruiseliner1,safe,short,safe,imminent,port,aft,large)"])
+        # Do actions (the time is arbitrary)
+        if obs['time_s'] == 250:
+            # Set waypoint location
+            mass_sim.set_waypoints('agent',
+                                [[430_000,
+                                    5_555_000]])
+        
+        if obs['time_s'] == 300:
+            # waypoint logic: 
+            # cpa_side(vessel0,vessel1,port_or_starboard)
+            # avoid(vessel0, vessel1, cpa_risk)
+            # resume(vessel0, vessel1, cpa_risk)
+            # turn(vessel0, magnitude)
+            mass_sim.send_waypoint_logic(
+                ["cpa_side(agent,cruiseliner1,starboard)",
+                 "avoid(agent,cruiseliner1,no_risk)",
+                 "resume(agent,cruiseliner1,no_risk)",
+                 "turn(agent,small)"])
 
 mass_sim.save_episode()
 
@@ -59,13 +64,11 @@ MASSsim(mode='playback',
 ## Manual Mode 
 To change the waypoints of a specific vessel, first click that vessel (defaults to agent), right click along the path or on a waypoint and click "Change" or "Add" or "Remove". If you click along the path of the vessel, the waypoint will be added in between the two waypoints either side of the path you clicked on, otherwise it will be added at the end of the current path. Other vessels can then be clicked and their waypoints changed as desired. Once all the desired waypoints have been added/changed, right click anywhere and click "Send" and the vessels will now follow the new waypoints. 
 
-Another method of adding waypoints is to left click on the vessel, then middle click all your desired waypoint locations, (reclicking a point will remove it), then middle click on the vessel to activate the waypoints. 
-
 The speed can be adjusted by clicking on a vessel and dragging up to the desired speed.
 
 ## Test Mode 
 Test mode allows programmatic interaction with the simulator. Follow the structure shown in the example script, using the "is_episode_running()" in a while loop. 
-- "next_step()" advances a time step.
+- "next_step()" checks whether to advance a time step and advances.
 - "get_obs()" return the observation dictionary containing 'time' and 'vessels'. 'vessels' is a dictionary of the vessels in the episode as Agent objects which contain the attributes "course_deg", "speed_kn", "wayponts" and "xy". They also have a dictionary of the CPA, TCPA, Range and Bearing to each other vessel in "other_vessels". Example usage:
 ```python
 # Get observation dict
@@ -84,6 +87,7 @@ obs['vessels']['boat1'].other_vessels['boat2'].range_m
 obs['vessels']['boat1'].other_vessels['boat2'].bearing_deg
 ```
 - "set_waypoints" allows you to set waypoints for each of the vessels. Specify the vessel_id as the first argument and the waypoints in a list as the second.
+- "send_waypoint_logic" is used for sending waypoint logic to the controller. These are specified as a list of logical predicates containing a combination of avoid, resume, cpa_side and turn.
 - "save_episode()" will the save the episode log.
 
 ## Playback Mode 
