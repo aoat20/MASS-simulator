@@ -199,7 +199,7 @@ class logic_bridge():
         # Check the cpa for each risk of collision and find which bin is appropriate
         roc_out = []
         for roc in bin_constants.RISK_OF_COLLISION:
-            dcpa_lims, tcpa_lims = self.roc_bin_to_cpa_lims(roc[0])
+            dcpa_lims, tcpa_lims = self.roc_bin_to_cpa_lims_spec(roc[0])
             for n in range(len(dcpa_lims)):
                 if dcpa > dcpa_lims[n][0] and dcpa < dcpa_lims[n][1] \
                         and tcpa > tcpa_lims[n][0] and tcpa < tcpa_lims[n][1]:
@@ -283,6 +283,24 @@ class logic_bridge():
                 bin_constants.RISK_OF_COLLISION) if b[0] == roc_bin][0]
             roc_bin = [b[0] for i, b in enumerate(bin_constants.RISK_OF_COLLISION)
                        if i <= bin_i]
+
+        dcpa_lims = []
+        tcpa_lims = []
+        for roc_bin_tmp in roc_bin:
+            dcpa_tcpa = [x[1:5] for x in bin_constants.RISK_OF_COLLISION
+                         if x[0] == roc_bin_tmp][0]
+            dcpa_lims.append([self.bin_to_dcpa(dcpa_tcpa[0])[0],
+                              self.bin_to_dcpa(dcpa_tcpa[1])[1]])
+            tcpa_lims.append([self.bin_to_tcpa(dcpa_tcpa[2])[0],
+                              self.bin_to_tcpa(dcpa_tcpa[3])[1]])
+
+        return dcpa_lims, tcpa_lims
+
+    def roc_bin_to_cpa_lims_spec(self, roc_bin):
+        if roc_bin == "no_risk":
+            roc_bin = ['opening', 'dcpa_acceptable']
+        else:
+            roc_bin = [roc_bin]
 
         dcpa_lims = []
         tcpa_lims = []
