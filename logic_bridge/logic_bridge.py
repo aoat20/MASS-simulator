@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 
 class logic_bridge():
 
-    def __init__(self):
+    def __init__(self,
+                 turn_logic_flag=False):
         self.log = [[]]
         self.n = 0
+        self.turn_logic_flag = turn_logic_flag
 
     def add_to_log(self, **kwargs):
         log_entry = []
@@ -62,50 +64,58 @@ class logic_bridge():
 
             turn_mag_bin = self.turn_magnitude_to_bin(
                 np.abs(v1_course-course0_new))
-            log_entry = f"waypoint({v1_id},{v2_id}," \
-                        + f"{roc1_bin},".replace("'", "").replace(" ", "") \
-                        + f"{roc2_bin},".replace("'", "").replace(" ", "") \
-                        + f"{cpa_side},{cpa_end}," \
-                        + f"{turn_mag_bin})"
+            # log_entry = f"waypoint({v1_id},{v2_id}," \
+            #             + f"{roc1_bin},".replace("'", "").replace(" ", "") \
+            #             + f"{roc2_bin},".replace("'", "").replace(" ", "") \
+            #             + f"{cpa_side},{cpa_end}," \
+            #             + f"{turn_mag_bin})"
+
+            log_entry = [f"take_action({v1_id})"]
+            log_entry.append(f"turn({v1_id},{turn_mag_bin})")
+            log_entry.append(f"avoid({v1_id},{v2_id},"
+                             + f"{roc1_bin}".replace("'", "").replace(" ", "")+")")
+            log_entry.append(f"resume({v1_id},{v2_id},"
+                             + f"{roc2_bin}".replace("'",
+                                                     "").replace(" ", "") + ")")
+            log_entry.append(f"side({v1_id},{v2_id},"
+                             + f"{cpa_side})")
 
         if "bearing_deg" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             sector, arc_overtaking = self.bearing_to_sector(
                 kwargs['bearing_deg'])
-            log_entry = f"sector({v_id1},{v_id2},{sector})"
+            log_entry = [f"sector({v_id1},{v_id2},{sector})"]
             if arc_overtaking:
-                self.log[self.n].append(log_entry)
-
-                log_entry = f"arc_overtaking({v_id2},{v_id1})"
+                log_entry.append(f"arc_overtaking({v_id2},{v_id1})")
 
         if "range_m" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             range_bin = self.range_to_bins(kwargs['range_m'])
-            log_entry = f"range({v_id1},{v_id2},{range_bin})"
+            log_entry = [f"range({v_id1},{v_id2},{range_bin})"]
 
         if "tcpa_s" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             tcpa_bin = self.tcpa_to_bin(kwargs['tcpa_s'])
             clo_or_op = self.closing_or_opening(kwargs['tcpa_s'])
-            log_entry = f"tcpa({v_id1},{v_id2},{tcpa_bin})" \
-                        + f""
+            log_entry = [f"tcpa({v_id1},{v_id2},{tcpa_bin})"]
+
         if "cpa_m" in kwargs:
             v_id1 = kwargs['vessel1']
             v_id2 = kwargs['vessel2']
             cpa_bin = self.cpa_to_bin(kwargs['cpa_m'])
-            log_entry = f"dcpa({v_id1},{v_id2},{cpa_bin})"
+            log_entry = [f"dcpa({v_id1},{v_id2},{cpa_bin})"]
 
-        if "action" in kwargs:
-            pass
+        if "resuming_mission" in kwargs:
+            log_entry = [f"resuming_mission({kwargs['vessel']})"]
 
-        if "resume" in kwargs:
-            log_entry = f"resume({kwargs['vessel']})"
+        if "waypoint_reached" in kwargs:
+            log_entry = [f"waypoint_reached({kwargs['vessel']})"]
 
         if log_entry:
-            self.log[self.n].append(log_entry)
+            self.log[self.n].extend(log_entry)
 
     def add_obs_to_log(self, obs):
         # If the vessel is turning don't add to log
@@ -120,7 +130,7 @@ class logic_bridge():
             for key2, value2 in value1.other_vessels.items():
 
                 if value1.resuming_mission == True:
-                    self.add_to_log(resume=True,
+                    self.add_to_log(resuming_mission=True,
                                     vessel=key1)
                     value1.resuming_mission = False
                 elif value1.waypoints_updated == 1:
@@ -144,9 +154,15 @@ class logic_bridge():
                                 vessel2=key2,
                                 range_m=value2.range_m)
 
+                if value1.turning or value1._final_waypoint_reached:
+                    if key1 == "agent":
+                        self.add_to_log(vessel=key1,
+                                        waypoint_reached=True)
+
                 # If either vessel is turning don't record any of the other stuff
-                if value1.turning or obs['vessels'][key2].turning:
-                    continue
+                if not self.turn_logic_flag:
+                    if value1.turning or obs['vessels'][key2].turning:
+                        continue
 
                 # Add the cpa
                 self.add_to_log(vessel1=key1,
@@ -263,7 +279,10 @@ class logic_bridge():
         if roc_bin == "no_risk":
             roc_bin = ['opening', 'dcpa_acceptable']
         else:
-            roc_bin = [roc_bin]
+            bin_i = [i for i, b in enumerate(
+                bin_constants.RISK_OF_COLLISION) if b[0] == roc_bin][0]
+            roc_bin = [b[0] for i, b in enumerate(bin_constants.RISK_OF_COLLISION)
+                       if i <= bin_i]
 
         dcpa_lims = []
         tcpa_lims = []
@@ -294,6 +313,10 @@ class logic_bridge():
                 if entry not in log[n+1] \
                         and any(x in entry for x in ["arc_overtaking"]):
                     log_entry.append(f"not({entry})")
+
+            # Remove duplicates
+            log_entry = list(set(log_entry))
+            log_entry.sort()
 
             # If there more than just the clock add the entry
             if len(log_entry) > 1 and any("clock" in x for x in log_entry):
@@ -482,6 +505,7 @@ class logic_bridge():
                          xy0,
                          course_deg,
                          turn_mag):
+        # Generate mask for turn magnitudes
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
                                   [xy_mg[1].flatten()]],
                                  axis=0)
@@ -501,7 +525,7 @@ class logic_bridge():
     def _setup_blank_wp_area(self,
                              xy_list,
                              lim_span=10000,
-                             res=100):
+                             res=500):
         # Compute xy_lims
         xy_min = np.min(np.array(xy_list), 0)
         xy_max = np.max(np.array(xy_list), 0)
@@ -514,9 +538,217 @@ class logic_bridge():
         wp_area = np.ones(xy_mg[0].flatten().shape, dtype=bool)
         return wp_area, xy_mg
 
+    def add_wp_area_cpa_side(self,
+                             xy_mg,
+                             vessel: agent.Agent,
+                             v2_id,
+                             cpa_side):
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        xy1 = vessel.xy
+        speed1 = vessel.speed_mps
+        xy2 = vessel.other_vessels[v2_id].xy
+        course2 = vessel.other_vessels[v2_id].course_deg
+        speed2 = vessel.other_vessels[v2_id].speed_mps
+        cpa_side_mask = []
+        for wp in mg_flat.T:
+            course1 = general.compute_bearing(xy1,
+                                              wp)
+            _, _, tcpa1_s = general.compute_cpa(xy1=xy1,
+                                                course1=course1,
+                                                speed_mps1=speed1,
+                                                xy2=xy2,
+                                                course2=course2,
+                                                speed_mps2=speed2)
+            cpa_side_tmp, _ = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
+                                                           xy1=xy1,
+                                                           course1=course1,
+                                                           speed_mps1=speed1,
+                                                           xy2=xy2,
+                                                           course2=course2,
+                                                           speed_mps2=speed2)
+            cpa_side_mask.append(cpa_side == cpa_side_tmp)
+        return cpa_side_mask
+
+    def add_wp_area_avoid(self,
+                          xy_mg,
+                          cpa_roc_avoid,
+                          vessel,
+                          v2_id):
+        [dcpa1_lims, tcpa1_lims] = self.roc_bin_to_cpa_lims(
+            roc_bin=cpa_roc_avoid)
+
+        print(tcpa1_lims)
+        print(dcpa1_lims)
+
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        xy1 = vessel.xy
+        speed1 = vessel.speed_mps
+        xy2 = vessel.other_vessels[v2_id].xy
+        course2 = vessel.other_vessels[v2_id].course_deg
+        speed2 = vessel.other_vessels[v2_id].speed_mps
+
+        mask_out = []
+        for wp in mg_flat.T:
+            course1 = general.compute_bearing(xy1,
+                                              wp)
+            dcpa1_m, _, tcpa1_s = general.compute_cpa(xy1=xy1,
+                                                      course1=course1,
+                                                      speed_mps1=speed1,
+                                                      xy2=xy2,
+                                                      course2=course2,
+                                                      speed_mps2=speed2)
+
+            # Make the risk of collision mask
+            mask_point = []
+            for n in range(len(dcpa1_lims)):
+                mask_point.append(dcpa1_m > dcpa1_lims[n][0]
+                                  and dcpa1_m < dcpa1_lims[n][1]
+                                  and tcpa1_s > tcpa1_lims[n][0]
+                                  and tcpa1_s < tcpa1_lims[n][1])
+            mask_out.append(any(mask_point))
+        return mask_out
+
+    def add_wp_area_resume(self,
+                           xy_mg,
+                           cpa_roc_resume,
+                           vessel,
+                           v2_id):
+        [dcpa2_lims, tcpa2_lims] = self.roc_bin_to_cpa_lims(
+            roc_bin=cpa_roc_resume)
+
+        print(tcpa2_lims)
+        print(dcpa2_lims)
+
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+
+        xy1 = vessel.xy
+        speed1 = vessel.speed_mps
+        xy2 = vessel.other_vessels[v2_id].xy
+        course2 = vessel.other_vessels[v2_id].course_deg
+        speed2 = vessel.other_vessels[v2_id].speed_mps
+        goal_wp = vessel.goal_waypoint
+
+        mask_out = []
+        for wp in mg_flat.T:
+            course1 = general.compute_bearing(xy1,
+                                              wp)
+            dcpa2_m, _, tcpa2_s = general.compute_future_cpas(xy1=xy1,
+                                                              speed_mps1=speed1,
+                                                              xy2=xy2,
+                                                              course2=course2,
+                                                              speed_mps2=speed2,
+                                                              wp=wp,
+                                                              goal_wp=goal_wp)
+
+            # Make the risk of collision mask
+            mask_point = []
+            for m in range(len(dcpa2_lims)):
+                mask_point.append(dcpa2_m > dcpa2_lims[m][0]
+                                  and dcpa2_m < dcpa2_lims[m][1]
+                                  and tcpa2_s > tcpa2_lims[m][0]
+                                  and tcpa2_s < tcpa2_lims[m][1])
+            mask_out.append(any(mask_point))
+
+        return mask_out
+
+    def mask_to_wp(self,
+                   xy_mg,
+                   wp_area,
+                   vessel):
+        # get the closest allowable waypoint to the goal
+        mg_flat = np.concatenate([[xy_mg[0].flatten()],
+                                  [xy_mg[1].flatten()]],
+                                 axis=0)
+        mg_flat_wp_area = mg_flat[:, wp_area]
+
+        wp_to_final = np.linalg.norm(mg_flat_wp_area - np.reshape(vessel.goal_waypoint,
+                                                                  [2, 1]), axis=0)
+        if len(vessel.waypoints) == 3:
+            pos_to_wp = np.linalg.norm(mg_flat_wp_area - np.reshape(vessel.waypoints[1],
+                                                                    [2, 1]), axis=0)
+        else:
+            pos_to_wp = np.linalg.norm(mg_flat_wp_area - np.reshape(vessel.xy,
+                                                                    [2, 1]), axis=0)
+
+        distances = pos_to_wp + wp_to_final
+
+        if len(distances) != 0:
+            min_i = np.argmin(distances)
+            xy_out = mg_flat_wp_area[:, min_i].tolist()
+        else:
+            xy_out = []
+            print("##################################################################\n"
+                  + "################ WARNING! No valid wp location. ##################\n"
+                  + "##################################################################")
+        return xy_out
+
     def waypoint_logic_to_coordinates(self,
                                       waypoint_logic: list,
                                       vessels: list[agent.Agent]):
+
+        # Go from waypoint logic with avoid, resume, cpa_side and turn
+        xy_list = [v.xy for v in vessels.values()]
+        wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
+
+        wp: str
+        for wp in waypoint_logic:
+            wp_list = wp.replace('(', ',').strip(")").split(",")
+            v0 = vessels[wp_list[1]]
+            if wp_list[0] == "turn":
+                # turn(vessel, magnitude)
+                wp_area_tmp = self.add_wp_area_turn(xy_mg=xy_mg,
+                                                    xy0=v0.xy,
+                                                    course_deg=v0.course_deg,
+                                                    turn_mag=wp_list[2])
+            elif wp_list[0] == "avoid":
+                # avoid(vessel0, vessel1, cpa_risk)
+                wp_area_tmp = self.add_wp_area_avoid(xy_mg=xy_mg,
+                                                     cpa_roc_avoid=wp_list[3],
+                                                     vessel=v0,
+                                                     v2_id=wp_list[2])
+            elif wp_list[0] == "resume":
+                # resume(vessel0, vessel1, cpa_risk)
+                wp_area_tmp = self.add_wp_area_resume(xy_mg=xy_mg,
+                                                      cpa_roc_resume=wp_list[3],
+                                                      vessel=v0,
+                                                      v2_id=wp_list[2])
+            elif wp_list[0] == "cpa_side":
+                # cpa_side(vessel0, vessel1, port_or_starboard)
+                cpa_side = wp_list[3]
+                if cpa_side != "port" and cpa_side != "starboard":
+                    cpa_side = ""
+                wp_area_tmp = self.add_wp_area_cpa_side(xy_mg=xy_mg,
+                                                        vessel=v0,
+                                                        v2_id=wp_list[2],
+                                                        cpa_side=cpa_side)
+
+            # plt.figure
+            # plt.imshow(np.array(wp_area_tmp).reshape(xy_mg[0].shape),
+            #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
+            #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
+            #            origin='lower')
+            # plt.scatter(v0.xy[0], v0.xy[1])
+            # plt.show()
+
+            wp_area = wp_area & wp_area_tmp
+
+        xy_out = self.mask_to_wp(xy_mg,
+                                 wp_area,
+                                 v0)
+
+        return v0.vessel_id, xy_out
+
+    def waypoint_logic_to_coordinates_wp(self,
+                                         waypoint_logic: list,
+                                         vessels: list[agent.Agent]):
 
         xy_list = [v.xy for v in vessels.values()]
         wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
