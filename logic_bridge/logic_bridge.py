@@ -118,7 +118,6 @@ class logic_bridge():
             self.log[self.n].extend(log_entry)
 
     def add_obs_to_log(self, obs):
-        # If the vessel is turning don't add to log
 
         # Add time
         self.add_to_log(time_s=obs['time_s'])
@@ -129,21 +128,22 @@ class logic_bridge():
             # Go through each other vessel
             for key2, value2 in value1.other_vessels.items():
 
-                if value1.resuming_mission == True:
-                    self.add_to_log(resuming_mission=True,
-                                    vessel=key1)
-                    value1.resuming_mission = False
-                elif value1.waypoints_updated == 1:
-                    n = 0
-                    for wp in value1.waypoints[1:]:
-                        if not np.isnan(wp[0]):
-                            self.add_to_log(v1_id=key1,
-                                            v2_id=key2,
-                                            vessel1=value1,
-                                            vessel2=value2,
-                                            waypoint=wp)
-
-                        n += 1
+                # Skip the waypoints if it's the first time step
+                if self.n != 0:
+                    if value1.resuming_mission == True:
+                        self.add_to_log(resuming_mission=True,
+                                        vessel=key1)
+                        value1.resuming_mission = False
+                    elif value1.waypoints_updated == 1:
+                        n = 0
+                        for wp in value1.waypoints[1:]:
+                            if not np.isnan(wp[0]):
+                                self.add_to_log(v1_id=key1,
+                                                v2_id=key2,
+                                                vessel1=value1,
+                                                vessel2=value2,
+                                                waypoint=wp)
+                            n += 1
 
                 # Add bearings
                 self.add_to_log(vessel1=key1,
@@ -580,9 +580,6 @@ class logic_bridge():
         [dcpa1_lims, tcpa1_lims] = self.roc_bin_to_cpa_lims(
             roc_bin=cpa_roc_avoid)
 
-        print(tcpa1_lims)
-        print(dcpa1_lims)
-
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
                                   [xy_mg[1].flatten()]],
                                  axis=0)
@@ -621,9 +618,6 @@ class logic_bridge():
                            v2_id):
         [dcpa2_lims, tcpa2_lims] = self.roc_bin_to_cpa_lims(
             roc_bin=cpa_roc_resume)
-
-        print(tcpa2_lims)
-        print(dcpa2_lims)
 
         mg_flat = np.concatenate([[xy_mg[0].flatten()],
                                   [xy_mg[1].flatten()]],
