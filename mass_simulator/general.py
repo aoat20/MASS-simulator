@@ -95,9 +95,9 @@ def compute_cpa_side_end(tcpa_s,
     xy2_cpa = xy2 + speed_mps2*tcpa_s*np.array([np.sin(course2_rad),
                                                 np.cos(course2_rad)])
     # Compute bearing of wp relative to second vessel
-    x_diff = xy1_cpa[0] - xy2_cpa[0]
-    y_diff = xy1_cpa[1] - xy2_cpa[1]
-    theta = (np.array(90-np.rad2deg(np.atan2(y_diff, x_diff))-course2)) % 360
+    x_diff = xy2_cpa[0] - xy1_cpa[0]
+    y_diff = xy2_cpa[1] - xy1_cpa[1]
+    theta = (np.array(90-np.rad2deg(np.atan2(y_diff, x_diff))-course1)) % 360
     theta_180 = (theta+180) % 360 - 180
     if theta_180 < 0:
         cpa_side = "port"
