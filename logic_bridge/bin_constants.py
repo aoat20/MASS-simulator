@@ -47,8 +47,10 @@ class bin_constants:
     # roc, dcpa1, dcpa2, tcpa1, tcpa2
     RISK_OF_COLLISION = [["opening", "critical", "safe",        # no_risk
                                      "opening", "opening"],
-                         ["dcpa_acceptable", "marginal", "safe",    # no_risk
-                                             "imminent", "very_long"],
+                         ["dcpa_acceptable_safe", "safe", "safe",    # no_risk
+                                                  "imminent", "very_long"],
+                         ["dcpa_acceptable_marginal", "marginal", "marginal",    # no_risk
+                                                      "imminent", "very_long"],
                          ["risk_developing", "critical", "close",
                                              "long", "very_long"],
                          ["medium_close", "close", "close",

@@ -77,7 +77,7 @@ class logic_bridge():
             log_entry.append(f"resume({v1_id},{v2_id},"
                              + f"{roc2_bin}".replace("'",
                                                      "").replace(" ", "") + ")")
-            log_entry.append(f"side({v1_id},{v2_id},"
+            log_entry.append(f"cpa_side({v1_id},{v2_id},"
                              + f"{cpa_side})")
 
         if "bearing_deg" in kwargs:
@@ -216,7 +216,7 @@ class logic_bridge():
 
     def cpa_to_bin(self, cpa_m):
         bin_sel = [r[0] for r in bin_constants.CPA_BINS
-                   if (cpa_m > r[1] and cpa_m < r[2])][0]
+                   if (cpa_m >= r[1] and cpa_m < r[2])][0]
         return bin_sel
 
     def bin_to_tcpa(self, tcpa_bin):
@@ -276,13 +276,10 @@ class logic_bridge():
         return bin_sel
 
     def roc_bin_to_cpa_lims(self, roc_bin):
-        if roc_bin == "no_risk":
-            roc_bin = ['opening', 'dcpa_acceptable']
-        else:
-            bin_i = [i for i, b in enumerate(
-                bin_constants.RISK_OF_COLLISION) if b[0] == roc_bin][0]
-            roc_bin = [b[0] for i, b in enumerate(bin_constants.RISK_OF_COLLISION)
-                       if i <= bin_i]
+        bin_i = [i for i, b in enumerate(
+            bin_constants.RISK_OF_COLLISION) if b[0] == roc_bin][0]
+        roc_bin = [b[0] for i, b in enumerate(bin_constants.RISK_OF_COLLISION)
+                   if i <= bin_i]
 
         dcpa_lims = []
         tcpa_lims = []
@@ -336,6 +333,14 @@ class logic_bridge():
             log_entry = list(set(log_entry))
             log_entry.sort()
 
+            # Put clock at the beginning
+            i_clock = next((i for i, s in enumerate(
+                log_entry) if "clock" in s), -1)
+
+            if i_clock != -1:
+                clock_val = log_entry.pop(i_clock)
+                log_entry.insert(0, clock_val)
+
             # If there more than just the clock add the entry
             if len(log_entry) > 1 and any("clock" in x for x in log_entry):
                 log_tmp.append(log_entry)
@@ -357,6 +362,7 @@ class logic_bridge():
                 else:
                     log_entry_out.append(n)
             log_out.append(log_entry_out)
+
         return log_out
 
     def add_wp_area_range_brg(self, xy0, course_deg, r1, r2, theta_1, theta_2):
@@ -553,7 +559,7 @@ class logic_bridge():
         # Set up the space
         xy_mg = np.meshgrid(np.arange(xy_lims[0], xy_lims[1], res),
                             np.arange(xy_lims[2], xy_lims[3], res))
-        wp_area = np.ones(xy_mg[0].flatten().shape, dtype=bool)
+        wp_area = np.zeros(xy_mg[0].flatten().shape, dtype=bool)
         return wp_area, xy_mg
 
     def add_wp_area_cpa_side(self,
@@ -650,8 +656,6 @@ class logic_bridge():
 
         mask_out = []
         for wp in mg_flat.T:
-            course1 = general.compute_bearing(xy1,
-                                              wp)
             dcpa2_m, _, tcpa2_s = general.compute_future_cpas(xy1=xy1,
                                                               speed_mps1=speed1,
                                                               xy2=xy2,
@@ -697,9 +701,9 @@ class logic_bridge():
             xy_out = mg_flat_wp_area[:, min_i].tolist()
         else:
             xy_out = []
-            print("##################################################################\n"
-                  + "################ WARNING! No valid wp location. ##################\n"
-                  + "##################################################################")
+            # print("##################################################################\n"
+            #       + "################ WARNING! No valid wp location. ##################\n"
+            #       + "##################################################################")
         return xy_out
 
     def waypoint_logic_to_coordinates(self,
@@ -708,55 +712,154 @@ class logic_bridge():
 
         # Go from waypoint logic with avoid, resume, cpa_side and turn
         xy_list = [v.xy for v in vessels.values()]
+
+        # Get the avoid and the resumes
+        # If only no_risk, try safe first and then marginal if it fails
+        avoid_clauses = [logic for logic in waypoint_logic
+                         if "avoid" in logic]
+        if avoid_clauses != []:
+            avoid_norisk_only = all(["no_risk" in logic
+                                    for logic in waypoint_logic
+                                    if "avoid" in logic])
+        else:
+            avoid_norisk_only = False
+
+        resume_clauses = [logic for logic in waypoint_logic
+                          if "resume" in logic]
+        if resume_clauses != []:
+            resume_norisk_only = all(["no_risk" in logic
+                                      for logic in waypoint_logic
+                                      if "resume" in logic])
+        else:
+            resume_norisk_only = False
+
+        turn_clauses = [logic for logic in waypoint_logic
+                        if "turn" in logic]
+
+        if avoid_norisk_only or resume_norisk_only:
+            pass
+        # Set up the blank mask
         wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
 
-        wp: str
-        for wp in waypoint_logic:
+        # Do the cpa_side clauses first
+        cpa_side_clauses = [logic for logic in waypoint_logic
+                            if "cpa_side" in logic]
+        for wp in cpa_side_clauses:
             wp_list = wp.replace('(', ',').strip(")").split(",")
-            v0 = vessels[wp_list[1]]
-            if wp_list[0] == "turn":
-                # turn(vessel, magnitude)
-                wp_area_tmp = self.add_wp_area_turn(xy_mg=xy_mg,
-                                                    xy0=v0.xy,
-                                                    course_deg=v0.course_deg,
-                                                    turn_mag=wp_list[2])
-            elif wp_list[0] == "avoid":
-                # avoid(vessel0, vessel1, cpa_risk)
-                wp_area_tmp = self.add_wp_area_avoid(xy_mg=xy_mg,
-                                                     cpa_roc_avoid=wp_list[3],
-                                                     vessel=v0,
-                                                     v2_id=wp_list[2])
-            elif wp_list[0] == "resume":
-                # resume(vessel0, vessel1, cpa_risk)
-                wp_area_tmp = self.add_wp_area_resume(xy_mg=xy_mg,
-                                                      cpa_roc_resume=wp_list[3],
-                                                      vessel=v0,
-                                                      v2_id=wp_list[2])
-            elif wp_list[0] == "cpa_side":
-                # cpa_side(vessel0, vessel1, port_or_starboard)
-                cpa_side = wp_list[3]
-                if cpa_side != "port" and cpa_side != "starboard":
-                    cpa_side = ""
-                wp_area_tmp = self.add_wp_area_cpa_side(xy_mg=xy_mg,
-                                                        vessel=v0,
-                                                        v2_id=wp_list[2],
-                                                        cpa_side=cpa_side)
+            # cpa_side(vessel0, vessel1, port_or_starboard)
+            cpa_side = wp_list[3]
+            if cpa_side != "port" and cpa_side != "starboard":
+                cpa_side = ""
+            wp_area_tmp = self.add_wp_area_cpa_side(xy_mg=xy_mg,
+                                                    vessel=vessels[wp_list[1]],
+                                                    v2_id=wp_list[2],
+                                                    cpa_side=cpa_side)
+            wp_area = wp_area | wp_area_tmp
 
             # plt.figure
-            # plt.imshow(np.array(wp_area_tmp).reshape(xy_mg[0].shape),
+            # plt.imshow(np.array(wp_area).reshape(xy_mg[0].shape),
             #            extent=[np.min(xy_mg[0]), np.max(xy_mg[0]),
             #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
             #            origin='lower')
-            # plt.scatter(v0.xy[0], v0.xy[1])
             # plt.show()
 
+        # If no cpa_side, anywhere is good
+        if cpa_side_clauses == []:
+            wp_area = wp_area + 1
+
+        for wp in turn_clauses:
+            wp_list = wp.replace('(', ',').strip(")").split(",")
+            # turn(vessel, magnitude)
+            wp_area_tmp = self.add_wp_area_turn(xy_mg=xy_mg,
+                                                xy0=vessels[wp_list[1]].xy,
+                                                course_deg=vessels[wp_list[1]
+                                                                   ].course_deg,
+                                                turn_mag=wp_list[2])
             wp_area = wp_area & wp_area_tmp
 
+        # If no risk, prioritise safe but allow marginal if nothing safe
+        wp_area_backup = wp_area.copy()
+
+        if avoid_norisk_only:
+            avoid_clauses_nr = [avoid_clauses[0].replace("no_risk",
+                                                         "dcpa_acceptable_safe"),
+                                avoid_clauses[0].replace("no_risk",
+                                                         "dcpa_acceptable_marginal")]
+            wp_list = avoid_clauses_nr[0].replace(
+                '(', ',').strip(")").split(",")
+            wp_area_tmp = self.add_wp_area_avoid(xy_mg=xy_mg,
+                                                 cpa_roc_avoid=wp_list[3],
+                                                 vessel=vessels[wp_list[1]],
+                                                 v2_id=wp_list[2])
+            wp_area = wp_area & wp_area_tmp
+
+            wp_list = avoid_clauses_nr[1].replace(
+                '(', ',').strip(")").split(",")
+            wp_area_tmp = self.add_wp_area_avoid(xy_mg=xy_mg,
+                                                 cpa_roc_avoid=wp_list[3],
+                                                 vessel=vessels[wp_list[1]],
+                                                 v2_id=wp_list[2])
+            wp_area_backup = wp_area_backup & wp_area_tmp
+
+        else:
+            for wp in avoid_clauses:
+                wp = wp.replace('no_risk',
+                                'dcpa_acceptable_marginal')
+                wp_list = wp.replace('(', ',').strip(")").split(",")
+                wp_area_tmp = self.add_wp_area_avoid(xy_mg=xy_mg,
+                                                     cpa_roc_avoid=wp_list[3],
+                                                     vessel=vessels[wp_list[1]],
+                                                     v2_id=wp_list[2])
+                wp_area = wp_area & wp_area_tmp
+                wp_area_backup = wp_area_backup & wp_area_tmp
+
+        if resume_norisk_only:
+            resume_clauses_nr = [resume_clauses[0].replace("no_risk",
+                                                           "dcpa_acceptable_safe"),
+                                 resume_clauses[0].replace("no_risk",
+                                                           "dcpa_acceptable_marginal")]
+            wp_list = resume_clauses_nr[0].replace(
+                '(', ',').strip(")").split(",")
+            wp_area_tmp = self.add_wp_area_resume(xy_mg=xy_mg,
+                                                  cpa_roc_resume=wp_list[3],
+                                                  vessel=vessels[wp_list[1]],
+                                                  v2_id=wp_list[2])
+            wp_area = wp_area & wp_area_tmp
+
+            wp_list = resume_clauses_nr[1].replace(
+                '(', ',').strip(")").split(",")
+            wp_area_tmp = self.add_wp_area_resume(xy_mg=xy_mg,
+                                                  cpa_roc_resume=wp_list[3],
+                                                  vessel=vessels[wp_list[1]],
+                                                  v2_id=wp_list[2])
+            wp_area_backup = wp_area_backup & wp_area_tmp
+
+        else:
+            for wp in resume_clauses:
+                wp = wp.replace('no_risk',
+                                'dcpa_acceptable_marginal')
+                wp_list = wp.replace('(', ',').strip(")").split(",")
+                wp_area_tmp = self.add_wp_area_resume(xy_mg=xy_mg,
+                                                      cpa_roc_resume=wp_list[3],
+                                                      vessel=vessels[wp_list[1]],
+                                                      v2_id=wp_list[2])
+                wp_area = wp_area & wp_area_tmp
+                wp_area_backup = wp_area_backup & wp_area_tmp
         xy_out = self.mask_to_wp(xy_mg,
                                  wp_area,
-                                 v0)
+                                 vessels[wp_list[1]])
 
-        return v0.vessel_id, xy_out
+        # Try the marginal risk if safe doesn't work
+        if xy_out == []:
+            if avoid_norisk_only or resume_norisk_only:
+                xy_out = self.mask_to_wp(xy_mg,
+                                         wp_area_backup,
+                                         vessels[wp_list[1]])
+
+        return vessels[wp_list[1]].vessel_id, xy_out
+
+    def get_waypoint_area_mask(self):
+        pass
 
     def waypoint_logic_to_coordinates_wp(self,
                                          waypoint_logic: list,
