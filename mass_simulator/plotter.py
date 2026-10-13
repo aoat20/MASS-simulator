@@ -82,10 +82,10 @@ class Plotter():
                 [0.9960, 0.5640, 0.2620],
                 [0.4540, 0.9210, 0.8540],
                 [0, 0.6390, 0.6390]]
-        return [c*255 for c in cols[n]]
+        return [c*255 for c in cols[n]], cols[n]
 
     def _setup_plot_themes(self, n):
-        col = self._get_plot_colors(n)
+        col, _ = self._get_plot_colors(n)
 
         with dpg.theme(tag=f'hist_theme_{n}'):
             with dpg.theme_component(dpg.mvLineSeries):
