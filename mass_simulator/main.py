@@ -4,10 +4,13 @@ from mass_simulator.plotter import Plotter
 from mass_simulator.logger import Logger
 from mass_simulator.playback import Playback
 from logic_bridge import logic_bridge
+from mass_simulator.general import create_isosceles_marker
 import os
 import json
 from mass_simulator.general import *
 import utm
+import matplotlib.pyplot as plt
+import matplotlib.colors as cm
 
 
 class MASSsim():
@@ -268,9 +271,11 @@ class MASSsim():
             if len(wp_xy) != 0:
                 self.set_waypoints(vessel_id=vessel,
                                    waypoints_utm=[wp_xy])
+                return True
             else:
                 # Add failed waypoint logic to log
                 self.lb.add_failed_waypoint_logic(waypoint_logic)
+                return False
 
     def set_waypoints(self, vessel_id, waypoints_utm):
         self._vessels[vessel_id].update_waypoints(waypoints_utm)
@@ -389,6 +394,76 @@ class MASSsim():
 
     def end_episode(self):
         self._world.t_elapsed = 10001
+
+    def save_current_state(self,
+                           save_dir,
+                           stats_flag=True,
+                           file_name=""):
+
+        colors = [cm.to_hex(plt.cm.tab10(i))
+                  for i in range(len(self._vessels))]
+
+        # Set up figure
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        ax.grid(visible=True)
+        ax.axis("equal")
+
+        # For each vessel plot position, direction and waypoints
+        # Annotate with label, speed and course
+        n = 0
+        v: Agent
+        for key, v in self._vessels.items():
+            plot_color = colors[n]
+            marker_path = create_isosceles_marker(-v.course_deg,
+                                                  base=0.7,
+                                                  height=1)
+
+            # plot current position
+            ax.plot(v.xy[0], v.xy[1],
+                    marker=marker_path,
+                    markersize=20, linestyle='None',
+                    color=plot_color)
+            if stats_flag:
+                ax.annotate(f"{v.vessel_id}\n "
+                            f"course:{v.course_deg:.0f}deg\n "
+                            f"speed:{v.speed_kn:.1f}m/s",
+                            v.xy,
+                            xytext=[10, -10],
+                            textcoords="offset points")
+
+            # Plot the planned path in thin dashed line
+            wps_tmp = v.waypoints.copy()
+            wps_tmp.append(v.goal_waypoint)
+            wps = list(map(list, zip(*wps_tmp)))
+            ax.plot(wps[0], wps[1],
+                    marker='x',
+                    markersize=10,
+                    linestyle="--",
+                    linewidth=2,
+                    color=plot_color)
+
+            # Plot the completed path
+            xys = list(map(list, zip(*v.xy_hist)))
+            ax.plot(xys[0], xys[1],
+                    linewidth=4,
+                    color=plot_color)
+
+            n += 1
+
+        # Set lims to 10% in all directions from the bounds of the waypoints
+
+        # Change font to times
+
+        # Savefig in save_dir
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if file_name == "":
+            fig.savefig(os.path.join(
+                save_dir, f't_{self._world.t_elapsed:05d}s.png'))
+        else:
+            fig.savefig(os.path.join(save_dir,
+                                     f'{file_name}.png'))
+        plt.close(fig)
 
 
 def main():
