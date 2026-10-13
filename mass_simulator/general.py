@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import griddata
 import math
+from matplotlib.path import Path
 
 
 def m_to_yds(m):
@@ -331,3 +332,25 @@ def solve_heading_for_desired_cpa(
             unique.append(90-h)
 
     return sorted(unique)
+
+
+def create_isosceles_marker(angle_deg, base=0.6, height=1.0):
+    # Define vertices for an upright isosceles triangle centered or tipped at origin
+    verts = np.array([
+        [0.0, height / 2],      # Apex
+        [-base / 2, -height / 2],  # Bottom left
+        [base / 2, -height / 2],  # Bottom right
+        [0.0, height / 2]       # Close path
+    ])
+
+    # Convert angle to radians and create rotation matrix
+    rad = np.deg2rad(angle_deg)
+    rot_mat = np.array([
+        [np.cos(rad), -np.sin(rad)],
+        [np.sin(rad),  np.cos(rad)]
+    ])
+
+    # Rotate vertices
+    rotated_verts = np.dot(verts, rot_mat.T)
+    codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.CLOSEPOLY]
+    return Path(rotated_verts, codes)
