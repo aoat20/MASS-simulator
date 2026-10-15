@@ -85,6 +85,33 @@ def compute_future_cpas(xy1, speed_mps1,
     return cpa_m, cpa_yds, tcpa_s
 
 
+def compute_future_cpa_side(xy1, speed_mps1,
+                            xy2, course2, speed_mps2,
+                            wp, goal_wp):
+    v2_course_rad = np.deg2rad(course2)
+    # Distance from agent pos to wp
+    r = compute_distance(xy1, wp)
+    # Travel time to wp
+    travel_time = r/speed_mps1
+    # Heading from waypoint to resumption point
+    course1_new = 90-np.rad2deg(np.atan2(goal_wp[1]-wp[1],
+                                         goal_wp[0]-wp[0]))
+    v2_xy_new = xy2 + speed_mps2*travel_time*np.array([np.sin(v2_course_rad),
+                                                       np.cos(v2_course_rad)])
+    _, _, tcpa_s = compute_cpa(wp, course1_new, speed_mps1,
+                               v2_xy_new, course2, speed_mps2)
+
+    cpa_side, cpa_end = compute_cpa_side_end(tcpa_s=tcpa_s,
+                                             xy1=wp,
+                                             course1=course1_new,
+                                             speed_mps1=speed_mps1,
+                                             xy2=v2_xy_new,
+                                             course2=course2,
+                                             speed_mps2=speed_mps2)
+
+    return cpa_side, cpa_end
+
+
 def compute_cpa_side_end(tcpa_s,
                          xy1, course1, speed_mps1,
                          xy2, course2, speed_mps2):

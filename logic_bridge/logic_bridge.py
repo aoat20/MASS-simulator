@@ -559,7 +559,7 @@ class logic_bridge():
         # Set up the space
         xy_mg = np.meshgrid(np.arange(xy_lims[0], xy_lims[1], res),
                             np.arange(xy_lims[2], xy_lims[3], res))
-        wp_area = np.zeros(xy_mg[0].flatten().shape, dtype=bool)
+        wp_area = np.ones(xy_mg[0].flatten().shape, dtype=bool)
         return wp_area, xy_mg
 
     def add_wp_area_cpa_side(self,
@@ -572,6 +572,7 @@ class logic_bridge():
                                  axis=0)
 
         xy1 = vessel.xy
+        goal_wp = vessel.goal_waypoint
         speed1 = vessel.speed_mps
         xy2 = vessel.other_vessels[v2_id].xy
         course2 = vessel.other_vessels[v2_id].course_deg
@@ -586,13 +587,26 @@ class logic_bridge():
                                                 xy2=xy2,
                                                 course2=course2,
                                                 speed_mps2=speed2)
-            cpa_side_tmp, _ = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
-                                                           xy1=xy1,
-                                                           course1=course1,
-                                                           speed_mps1=speed1,
-                                                           xy2=xy2,
-                                                           course2=course2,
-                                                           speed_mps2=speed2)
+            # Calculate time to arrive at wp
+            t_to_wp = general.compute_distance(xy1, wp)/speed1
+
+            # Check whether the wp is later than the cpa
+            if t_to_wp > tcpa1_s:
+                cpa_side_tmp, _ = general.compute_cpa_side_end(tcpa_s=tcpa1_s,
+                                                               xy1=xy1,
+                                                               course1=course1,
+                                                               speed_mps1=speed1,
+                                                               xy2=xy2,
+                                                               course2=course2,
+                                                               speed_mps2=speed2)
+            else:
+                cpa_side_tmp, _ = general.compute_future_cpa_side(xy1=xy1,
+                                                                  speed_mps1=speed1,
+                                                                  xy2=xy2,
+                                                                  course2=course2,
+                                                                  speed_mps2=speed2,
+                                                                  wp=wp,
+                                                                  goal_wp=goal_wp)
             cpa_side_mask.append(cpa_side == cpa_side_tmp)
         return cpa_side_mask
 
@@ -741,9 +755,23 @@ class logic_bridge():
         # Set up the blank mask
         wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
 
-        # Do the cpa_side clauses first
-        cpa_side_clauses = [logic for logic in waypoint_logic
-                            if "cpa_side" in logic]
+        # Do the cpa_side clauses first and get only the unique entries
+        cpa_side_clauses_set = set([logic
+                                    for logic in waypoint_logic
+                                    if "cpa_side" in logic])
+
+        # if port and starboard exist for the same vessel remove them
+        to_remove = set()
+        for s in list(cpa_side_clauses_set):
+            if "port" in s:
+                counterpart = s.replace("port", "starboard")
+                if counterpart in cpa_side_clauses_set:
+                    to_remove.add(s)
+                    to_remove.add(counterpart)
+
+        cpa_side_clauses = [s for s in list(cpa_side_clauses_set)
+                            if s not in to_remove]
+
         for wp in cpa_side_clauses:
             wp_list = wp.replace('(', ',').strip(")").split(",")
             # cpa_side(vessel0, vessel1, port_or_starboard)
@@ -754,7 +782,7 @@ class logic_bridge():
                                                     vessel=vessels[wp_list[1]],
                                                     v2_id=wp_list[2],
                                                     cpa_side=cpa_side)
-            wp_area = wp_area | wp_area_tmp
+            wp_area = wp_area & wp_area_tmp
 
             # plt.figure
             # plt.imshow(np.array(wp_area).reshape(xy_mg[0].shape),
