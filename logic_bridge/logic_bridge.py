@@ -792,8 +792,8 @@ class logic_bridge():
             # plt.show()
 
         # If no cpa_side, anywhere is good
-        if cpa_side_clauses == []:
-            wp_area = wp_area + 1
+        # if cpa_side_clauses == []:
+        #     wp_area = wp_area + 1
 
         for wp in turn_clauses:
             wp_list = wp.replace('(', ',').strip(")").split(",")
