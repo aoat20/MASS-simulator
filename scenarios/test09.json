@@ -1,0 +1,73 @@
+{
+    "params": {
+        "t_step": 1
+    },
+    "vessel_details": [
+        {
+            "vessel": "agent",
+            "speed_kn": 10,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
+            "waypoints": [
+                [
+                    15172.529296875,
+                    17913.671875
+                ],
+                [
+                    26925.986328125,
+                    18012.44140625
+                ]
+            ]
+        },
+        {
+            "vessel": "vessel1",
+            "speed_kn": 10,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
+            "waypoints": [
+                [
+                    31107.1875,
+                    14061.69921875
+                ],
+                [
+                    19419.578125,
+                    20218.271484375
+                ]
+            ]
+        }
+    ],
+    "depth_map": [
+        [
+            [
+                0,
+                0
+            ],
+            -100
+        ],
+        [
+            [
+                50000,
+                0
+            ],
+            -100
+        ],
+        [
+            [
+                50000,
+                30000
+            ],
+            -100
+        ],
+        [
+            [
+                0,
+                30000
+            ],
+            -100
+        ]
+    ]
+}

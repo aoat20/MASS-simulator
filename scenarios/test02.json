@@ -1,0 +1,73 @@
+{
+    "params": {
+        "t_step": 1
+    },
+    "vessel_details": [
+        {
+            "vessel": "agent",
+            "speed_kn": 10,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
+            "waypoints": [
+                [
+                    13972.0849609375,
+                    15975.365234375
+                ],
+                [
+                    24040.3671875,
+                    16069.7548828125
+                ]
+            ]
+        },
+        {
+            "vessel": "cruiseliner1",
+            "speed_kn": 12.0,
+            "draught_m": 12,
+            "turning_radius": 300,
+            "speed_change_knps": 0.015,
+            "speed_max_kn": 25,
+            "waypoints": [
+                [
+                    13625.9873046875,
+                    20317.3125
+                ],
+                [
+                    22372.806640625,
+                    15157.3173828125
+                ]
+            ]
+        }
+    ],
+    "depth_map": [
+        [
+            [
+                0,
+                0
+            ],
+            -100
+        ],
+        [
+            [
+                50000,
+                0
+            ],
+            -100
+        ],
+        [
+            [
+                50000,
+                30000
+            ],
+            -100
+        ],
+        [
+            [
+                0,
+                30000
+            ],
+            -100
+        ]
+    ]
+}

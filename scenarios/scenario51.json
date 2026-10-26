@@ -1,0 +1,93 @@
+{
+  "params": {
+    "t_step": 1,
+    "t_max": 10000
+  },
+  "metadata": {
+    "scenario_name": "Dover Strait Overtaking Collision",
+    "based_on": "MAIB Report 7/2018 - Huayang Endeavour / Seafrontier Collision, 1 July 2017",
+    "description": "Overtaking situation in Dover Strait TSS where conflicting VHF communication leads to collision. Agent vessel (faster) must safely overtake slower vessel ahead while third vessel crosses ahead of target.",
+    "learning_objectives": [
+      "Rule 13 - Overtaking: Overtaking vessel must keep clear",
+      "Rule 16 - Action by give-way vessel: Take early substantial action",
+      "Rule 34 - Sound signals: Use appropriate signals when manoeuvring",
+      "VHF communication hazards in collision avoidance",
+      "Long-range scanning and early action requirement (Rule 7b)"
+    ],
+    "key_lesson": "VHF should not be relied upon for collision avoidance. Early, substantial course alterations with appropriate sound signals are required. The overtaking vessel is ALWAYS give-way regardless of any VHF 'agreement'."
+  },
+  "vessel_details": [
+    {
+      "vessel": "agent",
+      "vessel_name": "Huayang_Endeavour",
+      "vessel_type": "bulk_carrier_ballast",
+      "speed_kn": 15.5,
+      "draught_m": 8,
+      "turning_radius": 400,
+      "speed_change_knps": 0.012,
+      "speed_max_kn": 17,
+      "waypoints": [
+        [
+          "51-05-00.00N",
+          "01-42-00.00E"
+        ],
+        [
+          "51-00-00.00N",
+          "01-28-00.00E"
+        ]
+      ],
+      "notes": "Faster vessel overtaking from astern. COG approximately 222 degrees. Must keep clear under Rule 13."
+    },
+    {
+      "vessel": "target_ahead",
+      "vessel_name": "Seafrontier",
+      "vessel_type": "oil_tanker_laden",
+      "speed_kn": 12.6,
+      "draught_m": 14,
+      "turning_radius": 500,
+      "speed_change_knps": 0.01,
+      "speed_max_kn": 15,
+      "waypoints": [
+        [
+          "51-03-30.00N",
+          "01-38-00.00E"
+        ],
+        [
+          "50-58-00.00N",
+          "01-24-00.00E"
+        ]
+      ],
+      "notes": "Slower vessel ahead on similar course (221 degrees). Stand-on vessel under Rule 13. May alter course to port to avoid crossing vessel."
+    },
+    {
+      "vessel": "crossing_vessel",
+      "vessel_name": "Donau_Express_II",
+      "vessel_type": "general_cargo",
+      "speed_kn": 10,
+      "draught_m": 6,
+      "turning_radius": 250,
+      "speed_change_knps": 0.018,
+      "speed_max_kn": 14,
+      "waypoints": [
+        [
+          "51-02-45.00N",
+          "01-34-30.00E"
+        ],
+        [
+          "50-56-00.00N",
+          "01-22-00.00E"
+        ]
+      ],
+      "notes": "Crossing vessel ahead of Seafrontier on COG 207 degrees. Creates traffic complexity requiring Seafrontier to consider course alteration."
+    }
+  ],
+  "scenario_context": {
+    "location": "Dover Strait Traffic Separation Scheme, South-West lane",
+    "time_of_day": "Night (0200-0304 UTC+2)",
+    "visibility": "Good",
+    "weather": "Clear, Wind SW Force 5, Slight seas",
+    "tidal_stream": "South-westerly at 2 knots",
+    "traffic_density": "Moderate - multiple vessels in TSS",
+    "critical_decision_point": "Agent vessel approaching target from astern at 1nm range, CPA less than 0.3nm predicted"
+  }
+}
