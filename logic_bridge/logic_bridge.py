@@ -204,7 +204,8 @@ class logic_bridge():
                 if dcpa > dcpa_lims[n][0] and dcpa < dcpa_lims[n][1] \
                         and tcpa > tcpa_lims[n][0] and tcpa < tcpa_lims[n][1]:
                     roc_out = roc[0]
-        if roc_out == "opening" or roc_out == "dcpa_acceptable":
+        if roc_out == "opening" \
+                or "dcpa_acceptable" in roc_out:
             roc_out = "no_risk"
 
         return roc_out
@@ -790,10 +791,6 @@ class logic_bridge():
             #                    np.min(xy_mg[1]), np.max(xy_mg[1])],
             #            origin='lower')
             # plt.show()
-
-        # If no cpa_side, anywhere is good
-        # if cpa_side_clauses == []:
-        #     wp_area = wp_area + 1
 
         for wp in turn_clauses:
             wp_list = wp.replace('(', ',').strip(")").split(",")
