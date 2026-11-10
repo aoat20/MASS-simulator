@@ -25,6 +25,7 @@ class MASSsim():
                  turn_logic_flag: bool = False):
 
         self.termination_reason = ""
+        self.wp_area = []
 
         self.lb = logic_bridge(turn_logic_flag=turn_logic_flag)
 
@@ -266,8 +267,8 @@ class MASSsim():
                 # Add failed waypoint logic to log
                 self.lb.add_failed_waypoint_logic(waypoint_logic)
         else:
-            vessel, wp_xy = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
-                                                                  vessels=self._vessels)
+            vessel, wp_xy, self.wp_area = self.lb.waypoint_logic_to_coordinates(waypoint_logic=waypoint_logic,
+                                                                                vessels=self._vessels)
             if len(wp_xy) != 0:
                 self.set_waypoints(vessel_id=vessel,
                                    waypoints_utm=[wp_xy])
@@ -400,20 +401,31 @@ class MASSsim():
                            stats_flag=True,
                            file_name=""):
 
-        colors = [cm.to_hex(plt.cm.tab10(i))
-                  for i in range(len(self._vessels))]
+        colors = [[0, 0, 0],
+                  [0.5, 0.5, 0.5]]
 
         # Set up figure
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.grid(visible=True)
         ax.axis("equal")
 
+        # Add the wp area if it exists
+        if self.wp_area != []:
+            ax.imshow(self.wp_area[0],
+                      extent=self.wp_area[1],
+                      alpha=0.1,
+                      origin='lower',
+                      cmap="gray")
+
         # For each vessel plot position, direction and waypoints
         # Annotate with label, speed and course
         n = 0
         v: Agent
         for key, v in self._vessels.items():
-            plot_color = colors[n]
+            if key == "agent":
+                plot_color = colors[0]
+            else:
+                plot_color = colors[1]
             marker_path = create_isosceles_marker(-v.course_deg,
                                                   base=0.7,
                                                   height=1)

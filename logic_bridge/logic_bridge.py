@@ -561,7 +561,7 @@ class logic_bridge():
         xy_mg = np.meshgrid(np.arange(xy_lims[0], xy_lims[1], res),
                             np.arange(xy_lims[2], xy_lims[3], res))
         wp_area = np.ones(xy_mg[0].flatten().shape, dtype=bool)
-        return wp_area, xy_mg
+        return wp_area, xy_mg, xy_lims
 
     def add_wp_area_cpa_side(self,
                              xy_mg,
@@ -754,7 +754,7 @@ class logic_bridge():
         if avoid_norisk_only or resume_norisk_only:
             pass
         # Set up the blank mask
-        wp_area, xy_mg = self._setup_blank_wp_area(xy_list)
+        wp_area, xy_mg, xy_lims = self._setup_blank_wp_area(xy_list)
 
         # Do the cpa_side clauses first and get only the unique entries
         cpa_side_clauses_set = set([logic
@@ -880,8 +880,12 @@ class logic_bridge():
                 xy_out = self.mask_to_wp(xy_mg,
                                          wp_area_backup,
                                          vessels[wp_list[1]])
+                wp_area = wp_area_backup
 
-        return vessels[wp_list[1]].vessel_id, xy_out
+        # reshape wp_area so it's an appropriate size
+        wp_area_out = [wp_area.reshape(xy_mg[0].shape), xy_lims]
+
+        return vessels[wp_list[1]].vessel_id, xy_out, wp_area_out
 
     def get_waypoint_area_mask(self):
         pass
