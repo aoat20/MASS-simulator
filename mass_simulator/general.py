@@ -46,10 +46,16 @@ def compute_cpa(xy1, course1, speed_mps1,
         speed_mps2*np.cos(np.deg2rad(course2))
     dx = xy1[0] - xy2[0]
     dy = xy1[1] - xy2[1]
+
     # CPA and TCPA
-    cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
+    if dv_y == 0 and dv_x == 0:
+        cpa_m = np.sqrt(np.square(dx)+np.square(dy))
+        tcpa_s = np.inf
+    else:
+        cpa_m = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
+        tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
+
     cpa_yds = m_to_yds(cpa_m)
-    tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
 
     return cpa_m, cpa_yds, tcpa_s
 
@@ -129,7 +135,7 @@ def compute_cpa_side_end(tcpa_s,
     theta_180 = (theta+180) % 360 - 180
     if theta_180 < 0:
         cpa_side = "port"
-    elif theta_180 > 0:
+    elif theta_180 >= 0:
         cpa_side = "starboard"
 
     if np.abs(theta_180) <= 90:
