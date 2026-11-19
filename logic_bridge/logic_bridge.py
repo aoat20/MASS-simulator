@@ -212,12 +212,12 @@ class logic_bridge():
 
     def tcpa_to_bin(self, tcpa_s):
         bin_sel = [r[0] for r in bin_constants.TCPA_BINS
-                   if (tcpa_s > r[1] and tcpa_s < r[2])][0]
+                   if (tcpa_s > r[1] and tcpa_s <= r[2])][0]
         return bin_sel
 
     def cpa_to_bin(self, cpa_m):
         bin_sel = [r[0] for r in bin_constants.CPA_BINS
-                   if (cpa_m >= r[1] and cpa_m < r[2])][0]
+                   if (cpa_m >= r[1] and cpa_m <= r[2])][0]
         return bin_sel
 
     def bin_to_tcpa(self, tcpa_bin):
