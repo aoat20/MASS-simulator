@@ -407,7 +407,6 @@ class MASSsim():
         # Set up figure
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.grid(visible=True)
-        ax.axis("equal")
 
         # Add the wp area if it exists
         if self.wp_area != []:
@@ -420,6 +419,7 @@ class MASSsim():
         # For each vessel plot position, direction and waypoints
         # Annotate with label, speed and course
         n = 0
+        xy_lims = []
         v: Agent
         for key, v in self._vessels.items():
             if key == "agent":
@@ -460,9 +460,42 @@ class MASSsim():
                     linewidth=4,
                     color=plot_color)
 
+            if xy_lims == []:
+                xy_lims = [np.min(np.array(wps_tmp)[:, 0]),
+                           np.max(np.array(wps_tmp)[:, 0]),
+                           np.min(np.array(wps_tmp)[:, 1]),
+                           np.max(np.array(wps_tmp)[:, 1])]
+
+            # Record the maximum x and y coordinates and update if bigger
+            xy_lims[0] = np.min([np.min(np.array(v.xy_hist)[:, 0]),
+                                 np.min(np.array(wps_tmp)[:, 0]),
+                                 xy_lims[0]])
+            xy_lims[1] = np.max([np.max(np.array(v.xy_hist)[:, 0]),
+                                 np.max(np.array(wps_tmp)[:, 0]),
+                                 xy_lims[1]])
+            xy_lims[2] = np.min([np.min(np.array(v.xy_hist)[:, 1]),
+                                 np.min(np.array(wps_tmp)[:, 1]),
+                                 xy_lims[2]])
+            xy_lims[3] = np.max([np.max(np.array(v.xy_hist)[:, 1]),
+                                 np.max(np.array(wps_tmp)[:, 1]),
+                                 xy_lims[3]])
             n += 1
 
         # Set lims to 10% in all directions from the bounds of the waypoints
+        xy_lims_tmp = np.array(xy_lims)+np.array([-1000, 1000, -1000, 1000])
+        if self.wp_area != []:
+            if self.wp_area[1][0] > xy_lims_tmp[0]:
+                xy_lims_tmp[0] = self.wp_area[1][0]
+            if self.wp_area[1][1] < xy_lims_tmp[1]:
+                xy_lims_tmp[1] = self.wp_area[1][1]
+            if self.wp_area[1][2] > xy_lims_tmp[2]:
+                xy_lims_tmp[2] = self.wp_area[1][2]
+            if self.wp_area[1][3] < xy_lims_tmp[3]:
+                xy_lims_tmp[3] = self.wp_area[1][3]
+        ax.axis(xy_lims_tmp)
+        ax.set_aspect("equal", "box")
+
+        plt.show()
 
         # Change font to times
 
@@ -471,10 +504,10 @@ class MASSsim():
             os.makedirs(save_dir)
         if file_name == "":
             fig.savefig(os.path.join(
-                save_dir, f't_{self._world.t_elapsed:05d}s.png'))
+                save_dir, f't_{self._world.t_elapsed:05d}s.jpg'))
         else:
             fig.savefig(os.path.join(save_dir,
-                                     f'{file_name}.png'))
+                                     f'{file_name}.jpg'))
         plt.close(fig)
 
 
