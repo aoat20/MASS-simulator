@@ -495,7 +495,7 @@ class MASSsim():
         ax.axis(xy_lims_tmp)
         ax.set_aspect("equal", "box")
 
-        plt.show()
+        # plt.show()
 
         # Change font to times
 
